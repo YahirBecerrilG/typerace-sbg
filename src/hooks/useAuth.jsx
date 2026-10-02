@@ -8,12 +8,25 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchProfile = useCallback(async (userId) => {
-    const { data } = await supabase
+  const fetchProfile = useCallback(async (userId, userObj = null) => {
+    let { data } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .maybeSingle()
+
+    // Resilient fallback: If profile was not found yet, ensure it is created using user metadata
+    if (!data && userObj) {
+      const fallbackName = userObj.user_metadata?.display_name || userObj.email?.split('@')[0] || 'Racer'
+      const fallbackAvatar = userObj.user_metadata?.avatar_url || '🏎️'
+      const { data: created } = await supabase
+        .from('profiles')
+        .upsert({ id: userId, display_name: fallbackName, avatar_url: fallbackAvatar }, { onConflict: 'id' })
+        .select('*')
+        .maybeSingle()
+      if (created) data = created
+    }
+
     setProfile(data)
   }, [])
 
@@ -21,7 +34,7 @@ export function AuthProvider({ children }) {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
+      if (session?.user) fetchProfile(session.user.id, session.user)
       setLoading(false)
     })
 
@@ -30,7 +43,7 @@ export function AuthProvider({ children }) {
       async (_event, session) => {
         setUser(session?.user ?? null)
         if (session?.user) {
-          await fetchProfile(session.user.id)
+          await fetchProfile(session.user.id, session.user)
         } else {
           setProfile(null)
         }
@@ -63,7 +76,7 @@ export function AuthProvider({ children }) {
   }
 
   const refreshProfile = () => {
-    if (user) fetchProfile(user.id)
+    if (user) fetchProfile(user.id, user)
   }
 
   return (

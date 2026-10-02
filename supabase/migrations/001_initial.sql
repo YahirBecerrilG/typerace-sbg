@@ -12,23 +12,54 @@ CREATE TABLE IF NOT EXISTS profiles (
 );
 
 -- Auto-create profile on user signup
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_display_name TEXT;
+  v_avatar_url   TEXT;
 BEGIN
-  INSERT INTO profiles (id, display_name)
-  VALUES (
-    NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'display_name', split_part(NEW.email, '@', 1))
-  )
-  ON CONFLICT (id) DO NOTHING;
+  -- Extract and sanitize display_name
+  v_display_name := COALESCE(
+    NULLIF(TRIM(NEW.raw_user_meta_data->>'display_name'), ''),
+    NULLIF(TRIM(split_part(NEW.email, '@', 1)), ''),
+    'Racer_' || SUBSTRING(NEW.id::text, 1, 6)
+  );
+
+  -- Extract or set default avatar
+  v_avatar_url := COALESCE(
+    NULLIF(TRIM(NEW.raw_user_meta_data->>'avatar_url'), ''),
+    '🏎️'
+  );
+
+  -- Insert profile into public.profiles
+  INSERT INTO public.profiles (id, display_name, avatar_url, created_at)
+  VALUES (NEW.id, v_display_name, v_avatar_url, NOW())
+  ON CONFLICT (id) DO UPDATE
+  SET
+    display_name = EXCLUDED.display_name,
+    avatar_url   = COALESCE(EXCLUDED.avatar_url, public.profiles.avatar_url);
+
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE WARNING 'handle_new_user error for user %: %', NEW.id, SQLERRM;
+    RETURN NEW;
 END;
 $$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE PROCEDURE handle_new_user();
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Ensure permissions for auth trigger
+GRANT USAGE ON SCHEMA public TO supabase_auth_admin;
+GRANT ALL ON TABLE public.profiles TO supabase_auth_admin;
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO supabase_auth_admin;
 
 -- ── 2. PHRASES ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS phrases (
@@ -406,8 +437,9 @@ ALTER TABLE race_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE race_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE phrases ENABLE ROW LEVEL SECURITY;
 
--- profiles: users can read all, update only their own
+-- profiles: users can read all, update and insert only their own
 CREATE POLICY "profiles_select" ON profiles FOR SELECT USING (true);
+CREATE POLICY "profiles_insert_own" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "profiles_update_own" ON profiles FOR UPDATE USING (auth.uid() = id);
 
 -- tournaments: anyone authenticated can read; insert only by authenticated users
