@@ -9,6 +9,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import CreateTournament from './pages/CreateTournament'
 import JoinTournament from './pages/JoinTournament'
+import Practice from './pages/Practice'
 import Lobby from './pages/Lobby'
 import Tournament from './pages/Tournament'
 import Race from './pages/Race'
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/create-tournament" element={<PrivateRoute><CreateTournament /></PrivateRoute>} />
           <Route path="/join-tournament" element={<PrivateRoute><JoinTournament /></PrivateRoute>} />
           <Route path="/lobby/:tournamentId" element={<PrivateRoute><Lobby /></PrivateRoute>} />
+          <Route path="/tournament/:tournamentId/practice" element={<PrivateRoute><Practice /></PrivateRoute>} />
           <Route path="/tournament/:tournamentId" element={<PrivateRoute><Tournament /></PrivateRoute>} />
           <Route path="/race/:matchId/:raceId" element={<PrivateRoute><Race /></PrivateRoute>} />
           <Route path="/results/:tournamentId" element={<PrivateRoute><Results /></PrivateRoute>} />

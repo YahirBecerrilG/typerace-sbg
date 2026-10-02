@@ -10,95 +10,70 @@ export function generateTournamentCode() {
   return code
 }
 
-// ─── Create tournament ──────────────────────────────────────────────────────
-export async function createTournament({ name, maxPlayers, difficulty, hostId }) {
-  let code
-  let attempts = 0
+// ─── Errors ─────────────────────────────────────────────────────────────────
+function messageOf(error, fallback) {
+  if (!error) return fallback
 
-  // Ensure unique code
-  while (attempts < 5) {
-    code = generateTournamentCode()
-    const { data } = await supabase
-      .from('tournaments')
-      .select('id')
-      .eq('code', code)
-      .maybeSingle()
-    if (!data) break
-    attempts++
+  // Postgres errors arrive as "message" plus optional "details" / "hint", and
+  // the message can be a bare identifier (e.g. a UUID) when the real cause
+  // lives in details. Stripping everything before the first ": " used to throw
+  // that context away and show a lone UUID, so keep the raw text and only fall
+  // back when there is nothing to show.
+  const parts = [error.message, error.details, error.hint]
+    .filter(Boolean)
+    .map((p) => String(p).trim())
+    .filter((p) => p.length > 0)
+
+  if (parts.length === 0) return fallback
+
+  // Deduplicate: Supabase often repeats the message inside details.
+  return [...new Set(parts)].join(' — ')
+}
+
+// ─── Create tournament ──────────────────────────────────────────────────────
+export async function createTournament({ name, maxPlayers, difficulty }) {
+  // Server-authoritative: host_id, status and the host's participant row are
+  // all created inside one RPC, so the client has no direct write path and
+  // cannot claim the admin label on someone else's behalf.
+  let lastError = null
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await supabase.rpc('create_tournament', {
+      p_name: name,
+      p_max_players: maxPlayers,
+      p_difficulty: difficulty,
+      p_code: generateTournamentCode(),
+    })
+
+    if (!error) return data // { ok, id, code }
+
+    lastError = error
+    // Only a code collision is worth retrying with a fresh code.
+    if (!/already taken/i.test(error.message || '')) break
   }
 
-  const { data, error } = await supabase
-    .from('tournaments')
-    .insert({
-      code,
-      name,
-      host_id: hostId,
-      max_players: maxPlayers,
-      difficulty,
-      status: 'lobby',
-      current_round: 0,
-    })
-    .select()
-    .single()
-
-  if (error) throw error
-
-  // Add host as first player
-  await supabase.from('tournament_players').insert({
-    tournament_id: data.id,
-    user_id: hostId,
-    status: 'waiting',
-  })
-
-  return data
+  throw new Error(messageOf(lastError, 'Could not create the tournament.'))
 }
 
 // ─── Join tournament ────────────────────────────────────────────────────────
-export async function joinTournament({ code, userId }) {
-  // Find tournament
-  const { data: tournament, error: tErr } = await supabase
-    .from('tournaments')
-    .select('*')
-    .eq('code', code.toUpperCase())
-    .maybeSingle()
-
-  if (tErr) throw tErr
-  if (!tournament) throw new Error('Tournament not found. Check the code and try again.')
-  if (tournament.status !== 'lobby') throw new Error('This tournament has already started or ended.')
-
-  // Check already joined
-  const { data: existing } = await supabase
-    .from('tournament_players')
-    .select('id')
-    .eq('tournament_id', tournament.id)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (existing) {
-    // Already a participant — return tournament so user can navigate to lobby
-    return tournament
-  }
-
-  // Check capacity
-  const { count } = await supabase
-    .from('tournament_players')
-    .select('id', { count: 'exact', head: true })
-    .eq('tournament_id', tournament.id)
-
-  if (count >= tournament.max_players) throw new Error('Tournament is full.')
-
-  // Join
-  const { error: pErr } = await supabase.from('tournament_players').insert({
-    tournament_id: tournament.id,
-    user_id: userId,
-    status: 'waiting',
+export async function joinTournament({ code }) {
+  // Server-authoritative: refuses joins once registration is closed, enforces
+  // capacity, and takes the player from auth.uid() — never from the client.
+  const { data, error } = await supabase.rpc('join_tournament', {
+    p_code: code,
   })
 
-  if (pErr) throw pErr
-  return tournament
+  if (error) throw new Error(messageOf(error, 'Could not join the tournament.'))
+  return data // { ok, tournament_id, already_joined }
 }
 
 // ─── Get tournament with players ────────────────────────────────────────────
+/**
+ * Tournament plus its roster. `players` is participants only: hosts are not in
+ * tournament_players, so they are never counted, seeded or rendered as a
+ * competitor. A bracket that already ran with a host inside it is filtered out
+ * here as well, so the UI stays consistent while the data is being cleaned up.
+ */
 export async function getTournamentWithPlayers(tournamentId) {
   const { data, error } = await supabase
     .from('tournaments')
@@ -113,35 +88,90 @@ export async function getTournamentWithPlayers(tournamentId) {
     .single()
 
   if (error) throw error
-  return data
+
+  const roster = data.tournament_players || []
+  const players = roster.filter(
+    (p) => p.role === 'player' && p.user_id !== data.host_id
+  )
+
+  return { ...data, players, playerCount: players.length }
 }
 
-// ─── Start tournament ───────────────────────────────────────────────────────
-export async function startTournament(tournamentId, hostId) {
-  const { data: tournament, error } = await supabase
-    .from('tournaments')
-    .select('*, tournament_players(*)')
-    .eq('id', tournamentId)
-    .single()
+/** The signed-in user's participant row for a tournament (or null). */
+export async function getMyParticipant(tournamentId, userId) {
+  const { data, error } = await supabase
+    .from('tournament_players')
+    .select('*')
+    .eq('tournament_id', tournamentId)
+    .eq('user_id', userId)
+    .maybeSingle()
 
   if (error) throw error
-  if (tournament.host_id !== hostId) throw new Error('Only the host can start the tournament.')
-  if (tournament.status !== 'lobby') throw new Error('Tournament already started.')
-
-  const players = tournament.tournament_players
-  if (players.length < 2) throw new Error('Need at least 2 players to start.')
-
-  // Use RPC to atomically start tournament and generate bracket
-  const { data, error: rpcErr } = await supabase.rpc('start_tournament', {
-    p_tournament_id: tournamentId,
-    p_host_id: hostId,
-  })
-
-  if (rpcErr) throw rpcErr
   return data
 }
 
-// ─── Get tournament bracket ─────────────────────────────────────────────────
+// ─── Host controls ──────────────────────────────────────────────────────────
+export async function closeRegistration(tournamentId) {
+  const { data, error } = await supabase.rpc('close_registration', {
+    p_tournament_id: tournamentId,
+  })
+  if (error) throw new Error(messageOf(error, 'Could not close registration.'))
+  return data
+}
+
+export async function reopenRegistration(tournamentId) {
+  const { data, error } = await supabase.rpc('reopen_registration', {
+    p_tournament_id: tournamentId,
+  })
+  if (error) throw new Error(messageOf(error, 'Could not reopen registration.'))
+  return data
+}
+
+/**
+ * Build the bracket: closes registration, seeds by practice score and
+ * creates round 1 (with any BYEs). Host only — decided server-side.
+ */
+export async function startTournament(tournamentId) {
+  const { data, error } = await supabase.rpc('start_tournament', {
+    p_tournament_id: tournamentId,
+  })
+  if (error) throw new Error(messageOf(error, 'Could not start the tournament.'))
+  return data
+}
+
+/** Open the next round once the previous one is fully settled. */
+export async function startNextRound(tournamentId) {
+  const { data, error } = await supabase.rpc('start_next_round', {
+    p_tournament_id: tournamentId,
+  })
+  if (error) throw new Error(messageOf(error, 'Could not start the round.'))
+  return data
+}
+
+export async function leaveTournament(tournamentId) {
+  const { data, error } = await supabase.rpc('leave_tournament', {
+    p_tournament_id: tournamentId,
+  })
+  if (error) throw new Error(messageOf(error, 'Could not leave the tournament.'))
+  return data
+}
+
+// ─── Practice / qualifier ───────────────────────────────────────────────────
+/**
+ * Store a practice run. Practice never touches matches, race results or the
+ * bracket — it only moves the seeding order.
+ */
+export async function recordPractice(tournamentId, { wpm, accuracy }) {
+  const { data, error } = await supabase.rpc('record_practice', {
+    p_tournament_id: tournamentId,
+    p_wpm: wpm,
+    p_accuracy: accuracy,
+  })
+  if (error) throw new Error(messageOf(error, 'Could not save practice result.'))
+  return data
+}
+
+// ─── Bracket ────────────────────────────────────────────────────────────────
 export async function getTournamentBracket(tournamentId) {
   const { data, error } = await supabase
     .from('rounds')
@@ -171,30 +201,48 @@ export async function getTournamentBracket(tournamentId) {
   return data
 }
 
-// ─── Get current match for player ───────────────────────────────────────────
+/** Match statuses a player can still act on. */
+export const ACTIONABLE_MATCH_STATUSES = ['waiting_players', 'ready', 'racing']
+
+/** Embeds used wherever a match is read. rounds.tournaments carries bracket_slots. */
+const MATCH_SELECT = `
+  *,
+  player1:tournament_players!matches_player1_id_fkey (*, profiles(*)),
+  player2:tournament_players!matches_player2_id_fkey (*, profiles(*)),
+  races (*, phrases(*)),
+  rounds (*, tournaments(*))
+`
+
+/** Load a single match with everything the race screen needs. */
+export async function getMatch(matchId) {
+  const { data, error } = await supabase
+    .from('matches')
+    .select(MATCH_SELECT)
+    .eq('id', matchId)
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+/** The participant's current actionable match in a tournament (or null). */
 export async function getActiveMatchForPlayer(tournamentId, userId) {
-  // Find player's tournament_player record
   const { data: tp } = await supabase
     .from('tournament_players')
     .select('id')
     .eq('tournament_id', tournamentId)
     .eq('user_id', userId)
-    .single()
+    .maybeSingle()
 
   if (!tp) return null
 
-  // Find active match
   const { data: match, error } = await supabase
     .from('matches')
-    .select(`
-      *,
-      player1:tournament_players!matches_player1_id_fkey (*, profiles(*)),
-      player2:tournament_players!matches_player2_id_fkey (*, profiles(*)),
-      races (*, phrases(*)),
-      rounds (*)
-    `)
+    .select(MATCH_SELECT)
     .or(`player1_id.eq.${tp.id},player2_id.eq.${tp.id}`)
-    .eq('status', 'active')
+    .in('status', ACTIONABLE_MATCH_STATUSES)
+    .order('started_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
   if (error) throw error

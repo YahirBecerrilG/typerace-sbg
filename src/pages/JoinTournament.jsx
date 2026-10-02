@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
 import { joinTournament } from '../services/tournamentService'
 import { Hash } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 export default function JoinTournament() {
-  const { user } = useAuth()
   const navigate = useNavigate()
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
@@ -19,9 +17,11 @@ export default function JoinTournament() {
     setError('')
     setLoading(true)
     try {
-      const tournament = await joinTournament({ code: code.trim(), userId: user.id })
-      toast.success(`Joined "${tournament.name}"!`)
-      navigate(`/lobby/${tournament.id}`)
+      // The server refuses the join once registration is closed, and decides
+      // whether this was a new join or an existing membership.
+      const result = await joinTournament({ code: code.trim() })
+      toast.success(result?.already_joined ? 'You are already in this tournament.' : 'Joined!')
+      navigate(`/lobby/${result.tournament_id}`)
     } catch (err) {
       setError(err.message || 'Failed to join tournament.')
     } finally {

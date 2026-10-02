@@ -1,39 +1,72 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../services/supabase'
-import { Trophy, Plus, LogIn, LogOut, Zap, Clock, ChevronRight } from 'lucide-react'
+import { Trophy, Plus, LogIn, LogOut, ChevronRight } from 'lucide-react'
+import { TOURNAMENT_STATUS_LABEL, placementLabel } from '../utils/bracket'
 import toast from 'react-hot-toast'
 
 export default function Dashboard() {
   const { user, profile, logout } = useAuth()
   const navigate = useNavigate()
-  const [recentTournaments, setRecentTournaments] = useState([])
+  const [entries, setEntries] = useState([])
   const [loadingTournaments, setLoadingTournaments] = useState(true)
 
-  useEffect(() => {
-    if (!user) return
-    fetchRecentTournaments()
-  }, [user])
-
-  const fetchRecentTournaments = async () => {
+  const fetchRecentTournaments = useCallback(async () => {
+    if (!user) {
+      setEntries([])
+      setLoadingTournaments(false)
+      return
+    }
     try {
-      const { data, error } = await supabase
-        .from('tournament_players')
-        .select('tournaments(*)')
-        .eq('user_id', user.id)
-        .order('joined_at', { ascending: false })
-        .limit(5)
+      // Hosting and playing are two separate relationships: a host has no
+      // tournament_players row at all, so the host list is read from
+      // tournaments.host_id and the playing list from the participant table.
+      const [hosted, joined] = await Promise.all([
+        supabase
+          .from('tournaments')
+          .select('*')
+          .eq('host_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(12),
+        supabase
+          .from('tournament_players')
+          .select('status, placement, tournaments(*)')
+          .eq('user_id', user.id)
+          .eq('role', 'player')
+          .order('joined_at', { ascending: false })
+          .limit(12),
+      ])
 
-      if (error) throw error
-      setRecentTournaments(data?.map((d) => d.tournaments).filter(Boolean) || [])
+      if (hosted.error) throw hosted.error
+      if (joined.error) throw joined.error
+
+      const hostedEntries = (hosted.data || [])
+        .filter((t) => t)
+        .map((t) => ({ tournament: t, role: 'admin', myStatus: null, placement: null }))
+
+      const playingEntries = (joined.data || [])
+        .map((d) => ({ tournament: d.tournaments, role: 'player', myStatus: d.status, placement: d.placement }))
+        .filter((d) => d.tournament)
+
+      // Never show the same tournament twice if a host somehow also has a
+      // leftover participant row on an old, already-run bracket.
+      const hostedIds = new Set(hostedEntries.map((e) => e.tournament.id))
+      setEntries([
+        ...hostedEntries,
+        ...playingEntries.filter((e) => !hostedIds.has(e.tournament.id)),
+      ])
     } catch {
       // ignore
     } finally {
       setLoadingTournaments(false)
     }
-  }
+  }, [user])
+
+  useEffect(() => {
+    fetchRecentTournaments()
+  }, [fetchRecentTournaments])
 
   const handleLogout = async () => {
     await logout()
@@ -42,6 +75,9 @@ export default function Dashboard() {
   }
 
   const displayName = profile?.display_name || user?.user_metadata?.display_name || 'Racer'
+
+  const hosting = entries.filter((e) => e.role === 'admin')
+  const playing = entries.filter((e) => e.role === 'player')
 
   return (
     <div style={{
@@ -149,7 +185,7 @@ export default function Dashboard() {
 
           {loadingTournaments ? (
             <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>Loading...</div>
-          ) : recentTournaments.length === 0 ? (
+          ) : entries.length === 0 ? (
             <div className="glass-card" style={{ padding: '32px', textAlign: 'center' }}>
               <Trophy size={36} style={{ color: 'rgba(255,255,255,0.2)', margin: '0 auto 12px' }} />
               <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>
@@ -157,10 +193,23 @@ export default function Dashboard() {
               </p>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {recentTournaments.map((t) => (
-                <TournamentRow key={t.id} tournament={t} onClick={() => navigate(`/lobby/${t.id}`)} />
-              ))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {hosting.length > 0 && (
+                <TournamentGroup
+                  title="Hosting"
+                  hint="You are the admin of these tournaments."
+                  color="#f59e0b"
+                  entries={hosting}
+                />
+              )}
+              {playing.length > 0 && (
+                <TournamentGroup
+                  title="Playing"
+                  hint="You joined these as a player."
+                  color="#00f5ff"
+                  entries={playing}
+                />
+              )}
             </div>
           )}
         </motion.div>
@@ -216,10 +265,52 @@ function ActionCard({ icon, title, description, color, onClick, delay = 0 }) {
   )
 }
 
-// ─── Tournament Row ───────────────────────────────────────────────────────────
-const STATUS_COLORS = { lobby: '#f59e0b', active: '#10b981', finished: '#8b5cf6' }
+function TournamentGroup({ title, hint, color, entries }) {
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '10px' }}>
+        <span style={{
+          fontFamily: 'Rajdhani, sans-serif', fontSize: '14px', fontWeight: 800,
+          letterSpacing: '0.12em', textTransform: 'uppercase', color,
+        }}
+        >
+          {title}
+        </span>
+        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>{hint}</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        {entries.map((e) => (
+          <TournamentRow
+            key={e.tournament.id}
+            tournament={e.tournament}
+            isAdmin={e.role === 'admin'}
+            myStatus={e.myStatus}
+            onClick={() => navigate(routeFor(e.tournament))}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
 
-function TournamentRow({ tournament, onClick }) {
+// ─── Tournament Row ───────────────────────────────────────────────────────────
+const STATUS_COLORS = {
+  lobby: '#f59e0b',
+  practice: '#f59e0b',
+  registration_closed: '#a855f7',
+  bracket_ready: '#00f5ff',
+  round_active: '#10b981',
+  completed: '#8b5cf6',
+}
+
+/** A started tournament belongs on the overview, not the lobby. */
+function routeFor(t) {
+  return ['bracket_ready', 'round_active', 'completed'].includes(t.status)
+    ? `/tournament/${t.id}`
+    : `/lobby/${t.id}`
+}
+
+function TournamentRow({ tournament, onClick, isAdmin, myStatus }) {
   return (
     <motion.div
       whileHover={{ x: 4 }}
@@ -247,6 +338,16 @@ function TournamentRow({ tournament, onClick }) {
           }}>
             {tournament.name}
           </span>
+          {isAdmin && (
+            <span style={{
+              fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em',
+              color: '#f59e0b', background: 'rgba(245,158,11,0.12)',
+              padding: '2px 7px', borderRadius: '4px',
+              border: '1px solid rgba(245,158,11,0.25)', flexShrink: 0,
+            }}>
+              HOST
+            </span>
+          )}
           <span style={{
             fontFamily: 'JetBrains Mono, monospace',
             fontSize: '11px',
@@ -265,11 +366,19 @@ function TournamentRow({ tournament, onClick }) {
             color: STATUS_COLORS[tournament.status] || 'rgba(255,255,255,0.4)',
             textTransform: 'capitalize',
           }}>
-            ● {tournament.status}
+            ● {TOURNAMENT_STATUS_LABEL[tournament.status] || tournament.status}
           </span>
           <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', textTransform: 'capitalize' }}>
             {tournament.difficulty}
           </span>
+          {myStatus && myStatus !== 'active' && (
+            <span style={{
+              fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em',
+              textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)',
+            }}>
+              {placementLabel(myStatus.placement) || myStatus}
+            </span>
+          )}
         </div>
       </div>
       <ChevronRight size={18} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />

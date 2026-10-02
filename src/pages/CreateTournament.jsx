@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
 import { createTournament } from '../services/tournamentService'
-import { Copy, Zap, Users, Gauge } from 'lucide-react'
+import { nextPowerOfTwo } from '../utils/bracket'
+import { Copy, Users, Gauge } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const DIFFICULTIES = [
@@ -12,13 +12,10 @@ const DIFFICULTIES = [
   { value: 'hard', label: 'Hard', description: 'Complex, long phrases', color: '#ef4444' },
 ]
 
-const PLAYER_OPTIONS = [2, 4, 8, 16]
-
 export default function CreateTournament() {
-  const { user } = useAuth()
   const navigate = useNavigate()
   const [name, setName] = useState('')
-  const [maxPlayers, setMaxPlayers] = useState(4)
+  const [maxPlayers, setMaxPlayers] = useState(8)
   const [difficulty, setDifficulty] = useState('medium')
   const [loading, setLoading] = useState(false)
   const [created, setCreated] = useState(null)
@@ -32,7 +29,6 @@ export default function CreateTournament() {
         name: name.trim(),
         maxPlayers,
         difficulty,
-        hostId: user.id,
       })
       setCreated(tournament)
     } catch (err) {
@@ -126,17 +122,25 @@ export default function CreateTournament() {
             <label className="field-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
               <Users size={14} /> Max Players
             </label>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {PLAYER_OPTIONS.map((n) => (
-                <SelectPill
-                  key={n}
-                  label={`${n} Players`}
-                  selected={maxPlayers === n}
-                  onClick={() => setMaxPlayers(n)}
-                  color="#00f5ff"
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+                <input
+                  className="input-field"
+                  type="number"
+                  min={2}
+                  max={64}
+                  value={maxPlayers}
+                  onChange={(e) => {
+                    const n = parseInt(e.target.value, 10)
+                    if (Number.isNaN(n)) return
+                    setMaxPlayers(Math.min(64, Math.max(2, n)))
+                  }}
+                  style={{ maxWidth: '110px' }}
                 />
-              ))}
-            </div>
+                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>
+                  Any count from 2 to 64. Odd counts get automatic BYEs to the next
+                  power of two ({nextPowerOfTwo(maxPlayers)} slots here).
+                </span>
+              </div>
           </div>
 
           {/* Difficulty */}
