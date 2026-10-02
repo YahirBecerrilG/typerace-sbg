@@ -1,31 +1,78 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
+/**
+ * TypeRacing design system.
+ *
+ * Layout of this file:
+ *   1. Tokens        — every colour, font and line lives here.
+ *   2. Base          — element defaults, focus rings, scrollbars.
+ *   3. Primitives    — surfaces, buttons, inputs, badges, labels.
+ *   4. Feature bits  — typing characters, race track, bracket, confetti.
+ *   5. Motion        — keyframes, then the reduced-motion guard at the very end.
+ *
+ * JetBrains Mono is load-bearing: it renders the typing phrase and the race
+ * telemetry. Its stack is deliberately not themed so it cannot drift.
+ */
 :root {
+  /* Surfaces: navy, almost black, so the accent colours carry the eye. */
+  --bg-deep: #05060e;
   --bg-primary: #080b14;
-  --bg-secondary: #0d1220;
-  --bg-card: #111827;
+  --bg-secondary: #0b0f1c;
+  --bg-card: #101524;
+  --bg-elev-1: rgba(16, 21, 36, 0.72);
+  --bg-elev-2: rgba(22, 28, 46, 0.78);
   --bg-glass: rgba(17, 24, 39, 0.7);
+  --bg-inset: rgba(255, 255, 255, 0.028);
 
+  /* Accents */
   --neon-cyan: #00f5ff;
+  --cyan: #22d3ee;
   --neon-purple: #8b5cf6;
+  --violet: #a78bfa;
   --neon-green: #10b981;
   --neon-red: #ef4444;
   --neon-yellow: #f59e0b;
   --neon-pink: #ec4899;
   --neon-orange: #f97316;
 
+  /* Type */
   --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #475569;
+  --text-secondary: #9aa8bd;
+  --text-muted: #55647a;
 
+  /* Hairlines: thin and low-contrast, which is what sells the premium feel. */
   --border-glass: rgba(148, 163, 184, 0.08);
+  --border-subtle: rgba(148, 163, 184, 0.14);
+  --border-strong: rgba(148, 163, 184, 0.24);
   --border-neon: rgba(0, 245, 255, 0.3);
+  --border-cyan: rgba(34, 211, 238, 0.32);
+  --border-violet: rgba(167, 139, 250, 0.32);
 
+  /* Glows: used sparingly — accents, focus and active states only. */
   --glow-cyan: 0 0 20px rgba(0, 245, 255, 0.4);
   --glow-purple: 0 0 20px rgba(139, 92, 246, 0.4);
   --glow-green: 0 0 20px rgba(16, 185, 129, 0.4);
   --glow-red: 0 0 20px rgba(239, 68, 68, 0.4);
+  --glow-accent: 0 18px 48px -22px rgba(0, 245, 255, 0.55);
+
+  /* Semantic tones, consumed by .badge and .tone-* helpers. */
+  --tone-ok: var(--neon-green);
+  --tone-warn: var(--neon-yellow);
+  --tone-danger: var(--neon-red);
+  --tone-info: var(--cyan);
+  --tone-neutral: var(--text-secondary);
+
+  --font-ui: 'Inter', sans-serif;
+  --font-display: 'Rajdhani', sans-serif;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-pill: 999px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * {
@@ -39,23 +86,41 @@ html {
 }
 
 body {
-  font-family: 'Inter', sans-serif;
-  background-color: var(--bg-primary);
+  font-family: var(--font-ui);
+  background-color: var(--bg-deep);
   color: var(--text-primary);
   min-height: 100vh;
-  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(0, 245, 255, 0.24);
+  color: #fff;
+}
+
+/* One consistent keyboard-focus treatment across every screen. */
+:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* ─── Scrollbar ─── */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: var(--bg-secondary);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--neon-purple);
-  border-radius: 3px;
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.5), rgba(139, 92, 246, 0.5));
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.75), rgba(139, 92, 246, 0.75));
 }
 
 /* ─── Background Grid ─── */
@@ -66,22 +131,64 @@ body {
   background-size: 50px 50px;
 }
 
+/* Finer grid for dense surfaces (race screen, bracket). */
+.bg-grid-fine {
+  background-image:
+    linear-gradient(rgba(0, 245, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.022) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
 /* ─── Glass Cards ─── */
 .glass-card {
-  background: var(--bg-glass);
+  background: var(--bg-elev-1);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-glass);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
 }
 
 .glass-card-neon {
-  background: var(--bg-glass);
+  background: var(--bg-elev-1);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-neon);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--glow-cyan);
+}
+
+/* Solid variant for panels that must not sit over moving content. */
+.surface {
+  background: linear-gradient(180deg, rgba(20, 26, 44, 0.92), rgba(11, 15, 28, 0.92));
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+}
+
+/* Inset well: inputs, list rows, anything that reads as "inside the panel". */
+.surface-inset {
+  background: var(--bg-inset);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+}
+
+/* Accent hairline that marks the important panel on a screen. */
+.hairline-top {
+  position: relative;
+}
+.hairline-top::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.55), transparent);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  pointer-events: none;
+}
+
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-subtle), transparent);
+  border: 0;
 }
 
 /* ─── Neon Text ─── */
@@ -100,7 +207,9 @@ body {
   text-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
 }
 
-/* ─── Gradients ─── */
+/* ─── Gradients ───
+   Deliberately reserved for CTAs, brand text and key states. Plain surfaces
+   stay flat so the accents keep their meaning. */
 .gradient-text {
   background: linear-gradient(135deg, var(--neon-cyan) 0%, var(--neon-purple) 100%);
   -webkit-background-clip: text;
@@ -115,29 +224,49 @@ body {
   background-clip: text;
 }
 
+/* Small uppercase kicker above a heading. */
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+.eyebrow::before {
+  content: '';
+  width: 22px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan));
+}
+
 /* ─── Buttons ─── */
 .btn-primary {
   background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
   color: white;
   font-weight: 700;
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--font-display);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 12px 28px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s var(--ease-out);
   position: relative;
   overflow: hidden;
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 245, 255, 0.35);
 }
 
-.btn-primary:active {
+.btn-primary:active:not(:disabled) {
   transform: translateY(0);
 }
 
@@ -145,17 +274,17 @@ body {
   background: transparent;
   color: var(--neon-cyan);
   font-weight: 700;
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--font-display);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   border: 1px solid var(--neon-cyan);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 12px 28px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s var(--ease-out);
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
   background: rgba(0, 245, 255, 0.08);
   box-shadow: var(--glow-cyan);
   transform: translateY(-2px);
@@ -165,17 +294,17 @@ body {
   background: linear-gradient(135deg, #ef4444, #dc2626);
   color: white;
   font-weight: 700;
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--font-display);
   letter-spacing: 0.05em;
   text-transform: uppercase;
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 12px 28px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s var(--ease-out);
 }
 
-.btn-danger:hover {
+.btn-danger:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: var(--glow-red);
 }
@@ -184,31 +313,61 @@ body {
   background: transparent;
   color: var(--text-secondary);
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-ui);
   border: 1px solid var(--border-glass);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 12px 28px;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s var(--ease-out);
 }
 
-.btn-ghost:hover {
-  border-color: var(--text-secondary);
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--border-strong);
   color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Shared disabled treatment — the native :disabled state was previously
+   indistinguishable from an enabled button. */
+.btn-primary:disabled,
+.btn-secondary:disabled,
+.btn-danger:disabled,
+.btn-ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  filter: saturate(0.5);
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+}
+
+.btn-lg {
+  padding: 15px 34px;
+  font-size: 17px;
+}
+
+.btn-block {
+  display: block;
+  width: 100%;
 }
 
 /* ─── Inputs ─── */
 .input-field {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--border-glass);
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   padding: 14px 18px;
   color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-ui);
   font-size: 15px;
   width: 100%;
   outline: none;
-  transition: all 0.2s ease;
+  transition: all 0.2s var(--ease-out);
 }
 
 .input-field:focus {
@@ -221,7 +380,151 @@ body {
   color: var(--text-muted);
 }
 
-/* ─── Typing Characters ─── */
+.input-field[aria-invalid='true'] {
+  border-color: rgba(239, 68, 68, 0.55);
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.input-field[aria-invalid='true']:focus {
+  border-color: var(--neon-red);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12);
+}
+
+/* Label above a field. This class was referenced by the forms but never
+   defined, so labels rendered as bare inline text. */
+.field-label {
+  display: block;
+  margin-bottom: 8px;
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.field-error {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--neon-red);
+}
+
+/* ─── Badges ─── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 11px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-display);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.badge-ready {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--neon-green);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge-waiting {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--neon-yellow);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.tone-ok {
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--tone-ok);
+  border-color: rgba(16, 185, 129, 0.28);
+}
+.tone-warn {
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--tone-warn);
+  border-color: rgba(245, 158, 11, 0.28);
+}
+.tone-danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--tone-danger);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+.tone-info {
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--tone-info);
+  border-color: rgba(34, 211, 238, 0.28);
+}
+.tone-accent {
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.16), rgba(139, 92, 246, 0.16));
+  color: var(--neon-cyan);
+  border-color: var(--border-cyan);
+}
+.tone-neutral {
+  background: rgba(148, 163, 184, 0.1);
+  color: var(--tone-neutral);
+  border-color: var(--border-subtle);
+}
+
+/* Status dot used inside badges. */
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ─── Stat tiles ─── */
+.stat-tile {
+  background: var(--bg-inset);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-tile-label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stat-tile-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.15;
+}
+
+/* ─── Ambient glow layers ─── */
+.glow-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Typing Characters ───
+   JetBrains Mono is set on the container by TypingText and is never themed
+   here: the phrase must stay monospaced and pixel-identical. */
 .char-pending {
   color: var(--text-muted);
 }
@@ -258,7 +561,7 @@ body {
     rgba(255, 255, 255, 0.02) 100%
   );
   border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   position: relative;
   overflow: hidden;
 }
@@ -281,10 +584,11 @@ body {
 
 /* ─── Countdown ─── */
 .countdown-number {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--font-display);
   font-size: 120px;
   font-weight: 700;
   text-align: center;
+  line-height: 1;
 }
 
 /* ─── Bracket ─── */
@@ -292,30 +596,20 @@ body {
   border-color: rgba(0, 245, 255, 0.2);
 }
 
-/* ─── Status Badge ─── */
-.badge-ready {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--neon-green);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.badge-waiting {
-  background: rgba(245, 158, 11, 0.15);
-  color: var(--neon-yellow);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
+/* Horizontal scroll container for the bracket on narrow screens.
+   Scoped to the bracket itself — the page never scrolls sideways. */
+.bracket-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 8px;
+  min-width: 0;
 }
 
 /* ─── Font ─── */
 .font-racing {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: var(--font-display);
 }
 
 .font-mono {
@@ -339,6 +633,31 @@ body {
 
 .animate-float {
   animation: float 3s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes pulse-ring {
+  0% { opacity: 0.55; transform: scale(0.9); }
+  70% { opacity: 0; transform: scale(1.6); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+
+/* Expanding halo behind READY indicators and live status. */
+.pulse-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid currentColor;
+  animation: pulse-ring 2.2s ease-out infinite;
+  pointer-events: none;
 }
 
 /* ─── Shake ─── */
@@ -371,6 +690,7 @@ body {
   height: 10px;
   border-radius: 2px;
   animation: confetti-fall linear forwards;
+  pointer-events: none;
 }
 
 @keyframes confetti-fall {
@@ -384,6 +704,564 @@ body {
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   EDITORIAL SYSTEM — second design iteration
+   ═══════════════════════════════════════════════════════════════════════════
+   The first pass already had the right palette. What was missing was the
+   *metrics*: a type ramp with real jumps, a vertical rhythm built from real
+   negative space, large grouped surfaces instead of grids of equal small cards,
+   and lighting that sits behind the content rather than on top of it.
+
+   Everything below is additive. No class above was renamed or removed, so the
+   screens that are not being redesigned (auth, create, join, tournament) keep
+   working untouched.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ─── Type ramp ───
+   One ramp for the whole product, so a heading is unmistakably a heading on
+   every screen. The jumps are deliberately large: display-xl is ~6x body. */
+:root {
+  --display-xl: clamp(54px, 11vw, 128px);
+  --display-l: clamp(38px, 6.4vw, 78px);
+  --display-m: clamp(28px, 4vw, 50px);
+  --display-s: clamp(21px, 2.4vw, 30px);
+  --display-xs: clamp(17px, 1.5vw, 20px);
+
+  --lede: clamp(15.5px, 1.3vw, 19px);
+  --body: 15px;
+  --caption: 13px;
+  --micro: 11px;
+
+  /* ─── Vertical rhythm ───
+     Sections are separated by air, never by a border. These three steps are
+     the only spacing values used between blocks, which is what makes the
+     composition read as deliberate instead of arbitrary. */
+  --gap-section: clamp(60px, 8.5vw, 128px);
+  --gap-block: clamp(26px, 3.2vw, 48px);
+  --gap-tight: clamp(14px, 1.6vw, 24px);
+
+  /* Editorial measure: long lines are hard to read. This caps them. */
+  --measure: 60ch;
+  --measure-tight: 44ch;
+  --measure-wide: 78ch;
+
+  /* ─── Desktop shell ───
+     The single source of truth for page width. TypeRacing is desktop-first, so
+     these are fixed caps rather than fluid clamps: on 1280 and 1366 the page
+     fills the viewport edge to edge, and from 1440 up it stops growing and stays
+     centred instead of stretching into unbounded line lengths.
+
+     Three tiers, and every page picks one. That is the whole system — no page
+     invents its own number. */
+  --shell: 1440px;   /* full pages: Home, Dashboard, Lobby, Race, Results      */
+  --shell-form: 720px; /* Create / Join: wide enough to read, not a narrow card */
+  --shell-panel: 640px; /* Register and the race-unavailable notice             */
+  --shell-gutter: 48px;
+}
+
+.measure { max-width: var(--measure); }
+.measure-tight { max-width: var(--measure-tight); }
+.measure-wide { max-width: var(--measure-wide); }
+
+/* ─── The desktop container ───
+   `min(100% - gutter, cap)` means the page spans the full viewport up to the cap
+   and then centres. Writing the gutter into the width rather than as padding is
+   what lets a 1440px monitor show 1440px of content instead of 1360px, and it is
+   why the shell needs no breakpoint: the same three lines behave correctly at
+   1280, 1366, 1440, 1600 and 1920. */
+.shell {
+  width: min(100% - var(--shell-gutter), var(--shell));
+  margin-inline: auto;
+}
+
+.shell-form {
+  width: min(100% - var(--shell-gutter), var(--shell-form));
+  margin-inline: auto;
+}
+
+.shell-panel {
+  width: min(100% - var(--shell-gutter), var(--shell-panel));
+  margin-inline: auto;
+}
+
+/* Display sizes. Rajdhani is condensed and technical, which is what carries the
+   competitive-gaming register without turning into a novelty font.
+
+   `overflow-wrap: break-word` + `max-width: 100%` are load-bearing on narrow
+   screens: player names and tournament names are single unbreakable words, and
+   at a 54px display size a long name would otherwise push straight out of the
+   viewport. Identical to the previous behaviour wherever the text already fits. */
+.display-xl {
+  font-family: var(--font-display);
+  font-size: var(--display-xl);
+  font-weight: 800;
+  line-height: 0.88;
+  letter-spacing: -0.035em;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+.display-l {
+  font-family: var(--font-display);
+  font-size: var(--display-l);
+  font-weight: 800;
+  line-height: 0.94;
+  letter-spacing: -0.03em;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+.display-m {
+  font-family: var(--font-display);
+  font-size: var(--display-m);
+  font-weight: 700;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+.display-s {
+  font-family: var(--font-display);
+  font-size: var(--display-s);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.012em;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+.display-xs {
+  font-family: var(--font-display);
+  font-size: var(--display-xs);
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.lede {
+  font-size: var(--lede);
+  line-height: 1.62;
+  color: var(--text-secondary);
+}
+
+.body-copy {
+  font-size: var(--body);
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.caption {
+  font-size: var(--caption);
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* The smallest type on the screen. Used for eyebrows, table heads and units. */
+.label-xs {
+  font-family: var(--font-display);
+  font-size: var(--micro);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Numeric emphasis: tabular figures so ticking values never shift layout. */
+.num {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* ─── Vertical rhythm ─── */
+.section { padding-block: var(--gap-section); }
+.section-tight { padding-block: var(--gap-block); }
+.stack-block { margin-block: var(--gap-block); }
+.stack-tight { margin-block: var(--gap-tight); }
+
+/* ─── Large grouped surfaces ───
+   Cards are no longer the default unit. A screen is now one or two big panels
+   with real padding, and the older small-card grid is reserved for genuinely
+   repeated, genuinely equal items (feature lists, stat rows). */
+.panel {
+  position: relative;
+  background: linear-gradient(180deg, rgba(20, 26, 44, 0.72), rgba(10, 14, 26, 0.78));
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-xl);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.panel-pad { padding: clamp(20px, 2.6vw, 36px); }
+.panel-pad-lg { padding: clamp(26px, 3.6vw, 52px); }
+
+/* Accent hairline across the top edge. Reserved for the single most important
+   panel on a screen so it keeps its meaning. */
+.panel-accent::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.6), rgba(139, 92, 246, 0.5), transparent);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  pointer-events: none;
+}
+
+/* Vertical accent bar that anchors a panel heading without boxing it in. */
+.rail {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+  background: linear-gradient(180deg, var(--neon-cyan), rgba(139, 92, 246, 0.35));
+  pointer-events: none;
+}
+
+.rule {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(90deg, transparent, var(--border-subtle) 15%, var(--border-subtle) 85%, transparent);
+}
+
+/* ─── Lighting ───
+   Glows are placed behind content in a dedicated layer. They are large, soft
+   and few: ambient depth, not decoration on every card. */
+.aurora {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Concentric ring pair behind a focal element — reads as a target/signal. */
+.halo-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 245, 255, 0.14);
+  pointer-events: none;
+}
+
+/* Technical grid that fades out instead of tiling edge to edge. */
+.bg-grid-fade {
+  background-image:
+    linear-gradient(rgba(0, 245, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.045) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 10%, transparent 76%);
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 10%, transparent 76%);
+}
+
+/* Edge vignette: pulls the eye to the centre column. */
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 100% 70% at 50% 40%, transparent 40%, rgba(2, 3, 8, 0.55) 100%);
+}
+
+/* ─── Metrics ───
+   Big numbers are the loudest thing inside a panel, which is what gives WPM,
+   accuracy and timers a clear hierarchy instead of twelve equal tiles. */
+.metric {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.metric-value {
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-xl { font-size: clamp(34px, 5.4vw, 62px); }
+.metric-lg { font-size: clamp(26px, 3.2vw, 38px); }
+.metric-md { font-size: clamp(20px, 2vw, 25px); }
+
+/* Unit sits under a metric rather than inside it, so the digits stay huge. */
+.metric-unit {
+  font-family: var(--font-display);
+  font-size: var(--micro);
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ─── Navigation ─── */
+.nav-shell {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  width: 100%;
+  background: rgba(5, 6, 14, 0.72);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.nav-inner {
+  margin-inline: auto;
+  width: min(100% - var(--shell-gutter), var(--shell));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 68px;
+}
+
+/* Links sit in a quiet pill container so they read as one object. */
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border-glass);
+}
+
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 15px;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-display);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.2s var(--ease-out), background 0.2s var(--ease-out);
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.nav-link[data-active='true'] {
+  color: var(--neon-cyan);
+  background: rgba(0, 245, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(0, 245, 255, 0.22);
+}
+
+/* Session chip: avatar initial + name. Presentational only. */
+.nav-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 12px 5px 5px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+}
+
+.nav-user-initial {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 700;
+  color: #05060e;
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+}
+
+.icon-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* ─── Buttons ─── */
+.btn-xl {
+  padding: 17px 40px;
+  font-size: clamp(15px, 1.8vw, 17px);
+  border-radius: var(--radius-lg);
+  max-width: 100%;
+}
+
+.btn-quiet {
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-weight: 600;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+}
+
+.btn-quiet:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.btn-quiet:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Primary CTA gets a real light source: a broad glow plus a travelling sheen. */
+.btn-cta {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 14px 44px -16px rgba(0, 245, 255, 0.5);
+}
+
+.btn-cta::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.32), transparent);
+  transform: skewX(-18deg);
+  transition: left 0.65s var(--ease-out);
+  pointer-events: none;
+}
+
+.btn-cta:hover:not(:disabled)::after {
+  left: 120%;
+}
+
+/* ─── E-sports table ───
+   Ranking is presented as a competitive table rather than a card list:
+   sticky header, aligned numeric columns, and a highlighted "me" row. */
+.rank-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  min-width: 0;
+}
+
+.rank-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 460px;
+}
+
+.rank-table thead th {
+  font-family: var(--font-display);
+  font-size: var(--micro);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  text-align: left;
+  padding: 13px 18px;
+  background: rgba(8, 11, 20, 0.72);
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+}
+
+.rank-table tbody td {
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border-glass);
+  vertical-align: middle;
+}
+
+.rank-table tbody tr:last-child td { border-bottom: 0; }
+
+.rank-table tbody tr { transition: background 0.2s var(--ease-out); }
+.rank-table tbody tr:hover td { background: rgba(255, 255, 255, 0.022); }
+.rank-table tbody tr[data-me='true'] td { background: rgba(0, 245, 255, 0.055); }
+
+.rank-table .col-num {
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Podium ordinal medallion for the top three. */
+.medal {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* ─── Race lane ───
+   Re-proportioned: the lane is now a real track with a road surface, lane
+   glow for the current player and a nameplate that never sits over the car. */
+.track-lane {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.015) 100%),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.05) 0%, transparent 55%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+}
+
+.track-lane::before {
+  /* Soft light along the road surface. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 30%, rgba(0, 0, 0, 0.35) 100%);
+  pointer-events: none;
+}
+
+.track-road {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  height: 3px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    transparent 18px,
+    rgba(255, 255, 255, 0.07) 18px,
+    rgba(255, 255, 255, 0.07) 38px
+  );
+}
+
+/* Progress fill that sits on the road itself. */
+.track-fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  height: 3px;
+  background: linear-gradient(90deg, rgba(0, 245, 255, 0.25), var(--neon-cyan));
+  box-shadow: 0 0 14px rgba(0, 245, 255, 0.45);
+  border-radius: 2px;
+}
+
 /* ─── Player colors ─── */
 .player-color-0 { color: #00f5ff; }
 .player-color-1 { color: #8b5cf6; }
@@ -393,3 +1271,18 @@ body {
 .player-color-5 { color: #f97316; }
 .player-color-6 { color: #06b6d4; }
 .player-color-7 { color: #a855f7; }
+
+/* ─── Reduced motion ───
+   Last in the file so it wins over every animation above. Motion is decorative
+   here; nothing communicates state through movement alone. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

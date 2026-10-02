@@ -1,10 +1,15 @@
 import { motion } from 'framer-motion'
 import { MAX_ERRORS } from '../utils/typing'
+import { useI18n } from '../i18n'
 
 /**
  * Error counter display with visual feedback.
+ *
+ * The dots are driven by MAX_ERRORS, so the crash threshold can never drift out
+ * of sync with the race rules — this component only renders it.
  */
-export function ErrorCounter({ errors = 0, shakeTrigger = 0, crashTrigger = 0 }) {
+export function ErrorCounter({ errors = 0, shakeTrigger = 0, crashTrigger: _crashTrigger }) {
+  const { t } = useI18n()
   const dots = Array.from({ length: MAX_ERRORS }, (_, i) => i < errors)
 
   return (
@@ -27,15 +32,16 @@ export function ErrorCounter({ errors = 0, shakeTrigger = 0, crashTrigger = 0 })
         transition: 'all 0.2s ease',
       }}
     >
-      <span style={{
-        fontFamily: 'Rajdhani, sans-serif',
-        fontSize: '13px',
-        fontWeight: 600,
+      <span
+        className="font-racing"
+        style={{
+          fontSize: '13px',
+          fontWeight: 600,
         color: errors > 0 ? '#ef4444' : 'rgba(255,255,255,0.5)',
         letterSpacing: '0.08em',
         textTransform: 'uppercase',
       }}>
-        Errors
+        {t('race.errors')}
       </span>
       <div style={{ display: 'flex', gap: '5px' }}>
         {dots.map((filled, i) => (

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useRace } from '../hooks/useRace'
 import { useMatchRealtime, useLiveMatch } from '../hooks/useTournament'
@@ -9,6 +10,7 @@ import { RaceTrack } from '../components/RaceTrack'
 import { TypingText } from '../components/TypingText'
 import { ErrorCounter } from '../components/ErrorCounter'
 import { RaceTimer } from '../components/RaceTimer'
+import { LiveTypingMetrics, ProgressRail } from '../components/TypingTelemetry'
 import {
   submitRaceResult,
   setMatchReady,
@@ -16,22 +18,40 @@ import {
   startRace,
   recordRaceStart,
 } from '../services/raceService'
-import { getRoundName, getTotalRounds, MATCH_STATUS_LABEL } from '../utils/bracket'
+import { getTotalRounds } from '../utils/bracket'
+import { myPlayerInMatch, isTerminalMatchStatus } from '../utils/matchNavigation'
 import { formatTime } from '../utils/typing'
-import toast from 'react-hot-toast'
+import { useI18n, useLabels } from '../i18n'
+import { AppShell } from '../components/ui/AppShell'
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher'
+import { LoadingScreen } from '../components/ui/LoadingScreen'
 
-const TERMINAL_STATUSES = ['completed', 'bye', 'forfeit']
-
+/**
+ * Race screen.
+ *
+ * Composition: identity, then the two competitors as clearly separated panels,
+ * then the track where their progress is visible side by side, then the phrase,
+ * then the telemetry.
+ *
+ * The purple/cyan treatment is used with restraint — the accents live on the
+ * two players, the live progress and the timer, so they carry meaning instead
+ * of colouring everything. There is no card wrapping every single element.
+ *
+ * Nothing here changes how the race runs: the READY gate, the countdown, the
+ * crash rule, the single idempotent submit, the presence flags, the broadcast
+ * payloads and the URL-tampering guard are all exactly as they were.
+ */
 export default function Race() {
   const { matchId, raceId } = useParams()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const navigate = useNavigate()
+  const { t } = useI18n()
+  const labels = useLabels()
+  const motionSafe = !useReducedMotion()
 
-  const { match, loading } = useLiveMatch(matchId)
+  const { match, loading, error } = useLiveMatch(matchId)
 
   const [phrase, setPhrase] = useState('')
-  const [myPlayer, setMyPlayer] = useState(null)
-  const [opponentPlayer, setOpponentPlayer] = useState(null)
 
   // 'ready_gate' -> 'countdown' -> 'racing' -> 'waiting' -> 'done'
   const [phase, setPhase] = useState('ready_gate')
@@ -58,24 +78,22 @@ export default function Race() {
   const totalRounds = getTotalRounds(tournament?.bracket_slots || tournament?.max_players || 2)
 
   // ─── Phrase comes from the race row embedded in the match ─────────────────
+  // Never translated: phrases are English in every locale.
   useEffect(() => {
     const r = match?.races?.[0]
     if (r?.phrases?.text) setPhrase(r.phrases.text)
   }, [match])
 
   // ─── Identify the two players ─────────────────────────────────────────────
-  useEffect(() => {
-    if (!match || !user?.id) return
-    const p1 = match.player1
-    const p2 = match.player2
-    if (p1?.user_id === user.id) {
-      setMyPlayer(p1)
-      setOpponentPlayer(p2)
-    } else if (p2?.user_id === user.id) {
-      setMyPlayer(p2)
-      setOpponentPlayer(p1)
-    }
-  }, [match, user])
+  // Derived from the loaded match instead of being stored in state. The URL is
+  // attacker-controlled, so "am I actually in this match?" must be answered from
+  // the server's row, synchronously — an effect would leave one render where
+  // `myPlayer` is still null and the opponent is already on screen.
+  const myPlayer = myPlayerInMatch(match, user?.id)
+  const opponentPlayer =
+    match?.player1_id === myPlayer?.id ? match?.player2
+      : match?.player2_id === myPlayer?.id ? match?.player1
+        : null
 
   const iAmPlayer1 = match?.player1_id === myPlayer?.id
   const opponentReady = iAmPlayer1 ? match?.player2_ready : match?.player1_ready
@@ -84,7 +102,7 @@ export default function Race() {
   // The overlay stays visible (the player still sees the result). Instead of
   // auto-navigating, we plant a sentinel entry so Back is swallowed here, and
   // the overlay's own CTA leaves with replace() to consume it.
-  const isTerminal = !!status && TERMINAL_STATUSES.includes(status)
+  const isTerminal = !!status && isTerminalMatchStatus(status)
   useEffect(() => {
     if (!isTerminal) return
 
@@ -98,14 +116,16 @@ export default function Race() {
   }, [isTerminal])
 
   // ─── Presences ────────────────────────────────────────────────────────────
+  // Only once we are confirmed to be one of the two players, so a stranger who
+  // guessed a match URL never issues writes at all.
   useEffect(() => {
-    if (!matchId) return
+    if (!matchId || !myPlayer) return
     setMatchPresence(matchId, true)
     return () => {
       // Fire-and-forget: clears our READY flag so nobody waits forever.
       setMatchPresence(matchId, false)
     }
-  }, [matchId])
+  }, [matchId, myPlayer])
 
   // ─── READY gate ───────────────────────────────────────────────────────────
   const handleReady = useCallback(async () => {
@@ -239,6 +259,7 @@ export default function Race() {
     typedText,
     currentIndex,
     errors,
+    totalKeystrokes,
     progress,
     isCrashed,
     isFinished,
@@ -298,34 +319,47 @@ export default function Race() {
         ? 'racing'
         : 'idle'
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
-      <div style={fullScreen}>
-        <p style={muted}>Preparing race...</p>
-      </div>
+      <AppShell>
+        <LoadingScreen label={t('race.loading')} />
+      </AppShell>
     )
   }
 
-  return (
-    <div
-      style={{ ...fullScreen, position: 'relative', overflowX: 'hidden' }}
-      onClick={() => inputRef.current?.focus()}
-    >
-      {/* Invisible input only exists to raise the soft keyboard on mobile.
-          Keydown is handled solely by the window listener above, otherwise
-          every keypress would be processed twice. */}
-      <input
-        ref={inputRef}
-        style={{ position: 'fixed', opacity: 0, top: 0, left: 0, width: 0, height: 0, pointerEvents: 'none' }}
-        inputMode="text"
-        autoComplete="off"
-        autoCorrect="off"
-        autoCapitalize="off"
-        spellCheck={false}
-        readOnly
-      />
+  // The match could not be read (wrong id, or RLS refused it because this user
+  // is neither a competitor nor the host). Nothing about the match is rendered.
+  if (!match || error) {
+    return <RaceUnavailable />
+  }
 
-      <div className="bg-grid" style={{ position: 'absolute', inset: 0, opacity: 0.25 }} />
+  // URL tampering guard: the row loaded, but this session is not one of the two
+  // players. Rendering anyway would leak the opponent's display name and the
+  // phrase to a third party, so the screen is refused instead.
+  if (!myPlayer) {
+    return <RaceUnavailable />
+  }
+
+  return (
+    <AppShell width="shell">
+      {/* Click anywhere to re-focus the capture input on touch devices. */}
+      <div onClick={() => inputRef.current?.focus()}>
+        {/* Invisible input only exists to raise the soft keyboard on mobile.
+            Keydown is handled solely by the window listener above, otherwise
+            every keypress would be processed twice. */}
+        <input
+          ref={inputRef}
+          style={{ position: 'fixed', opacity: 0, top: 0, left: 0, width: 0, height: 0, pointerEvents: 'none' }}
+          inputMode="text"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          readOnly
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+      </div>
 
       {showCountdown && phase !== 'done' && (
         <Countdown onComplete={handleCountdownComplete} />
@@ -342,23 +376,36 @@ export default function Race() {
             opponentName={opponentPlayer?.profiles?.display_name}
             tournamentId={tournamentId}
             onNavigate={navigate}
+            motionSafe={motionSafe}
           />
         )}
       </AnimatePresence>
 
-      <div style={content}>
-        {/* ─── Header ─── */}
-        <div style={headerRow}>
-          <div>
-            <div style={title}>{tournament?.name || 'Race'}</div>
-            <div style={subtitle}>
-              <span>{getRoundName(round?.round_number || 1, totalRounds)}</span>
-              <span>•</span>
-              <span>{MATCH_STATUS_LABEL[status] || status}</span>
-            </div>
+      <main className="pb-20">
+        {/* ─── Identity ─── */}
+        <header className="mb-10 flex flex-wrap items-end justify-between gap-5 pt-8">
+          <div className="min-w-0">
+            <span className="eyebrow">{t('race.eyebrow')}</span>
+            <h1
+              className="display-s mt-4 overflow-hidden text-ellipsis whitespace-nowrap"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              {tournament?.name || t('race.titleFallback')}
+            </h1>
+            <p
+              className="font-racing mt-3 flex flex-wrap items-center gap-2.5 text-[12px] font-semibold uppercase"
+              style={{ color: 'var(--text-muted)', letterSpacing: '0.08em' }}
+            >
+              <span style={{ color: 'var(--cyan)' }}>
+                {labels.roundName(round?.round_number || 1, totalRounds)}
+              </span>
+              <span style={{ color: 'var(--text-muted)' }}>•</span>
+              <span>{labels.matchStatus(status)}</span>
+            </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div className="flex flex-wrap items-center gap-3">
+            <LanguageSwitcher />
             <ErrorCounter errors={errors} shakeTrigger={shakeTrigger} crashTrigger={crashTrigger} />
             <RaceTimer
               raceStarted={raceStarted}
@@ -366,295 +413,345 @@ export default function Race() {
               finalMs={isFinished && myTimeMs ? myTimeMs : null}
             />
           </div>
-        </div>
+        </header>
 
-        {/* ─── READY gate ─── */}
+        {/* ═══ READY gate — the two competitors, clearly separated ════════ */}
         {phase === 'ready_gate' && (
-          <div style={panel}>
-            <div style={panelTitle}>
-              {amReady ? 'Waiting for your opponent…' : 'Ready to race?'}
-            </div>
-            <p style={{ ...muted, textAlign: 'center', marginBottom: '20px', fontSize: '14px' }}>
-              Both players must be READY before the countdown starts.
-            </p>
+          <motion.section
+            initial={motionSafe ? { opacity: 0, y: 18 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45 }}
+            className="panel panel-accent panel-pad-lg mb-10 text-center"
+          >
+            <h2 className="display-m" style={{ color: 'var(--text-primary)' }}>
+              {amReady ? t('race.waitingOpponent') : t('race.readyTitle')}
+            </h2>
+            <p className="body-copy mx-auto mt-4 max-w-md">{t('race.readyHelp')}</p>
 
-            <div style={readyRow}>
-              <ReadyPill
-                name="You"
+            {/* Head-to-head: two equal-weight competitor panels. */}
+            <div className="mx-auto mt-10 grid max-w-3xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-6">
+              <CompetitorPanel
+                name={myPlayer?.profiles?.display_name || t('common.youShort')}
                 ready={amReady}
-                isMe
+                isMine
               />
-              <div style={{ color: 'rgba(255,255,255,0.25)', fontSize: '13px', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700 }}>
+              <span
+                className="font-racing text-sm font-extrabold tracking-[0.18em]"
+                style={{ color: 'var(--text-muted)' }}
+              >
                 VS
-              </div>
-              <ReadyPill
-                name={opponentPlayer?.profiles?.display_name || 'Opponent'}
+              </span>
+              <CompetitorPanel
+                name={opponentPlayer?.profiles?.display_name || t('common.opponent')}
                 ready={!!opponentReady}
               />
             </div>
 
             <motion.button
-              whileHover={amReady ? {} : { scale: 1.02 }}
-              whileTap={amReady ? {} : { scale: 0.98 }}
-              className="btn-primary"
-              style={{ width: '100%', padding: '14px', marginTop: '24px', fontSize: '15px' }}
+              whileHover={motionSafe && !amReady ? { scale: 1.02 } : undefined}
+              whileTap={motionSafe && !amReady ? { scale: 0.98 } : undefined}
+              className="btn-primary btn-xl btn-cta mx-auto mt-10"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               disabled={amReady}
               onClick={handleReady}
             >
-              {amReady ? 'READY ✓' : startingRace ? 'Starting…' : "I'M READY"}
+              {amReady ? t('race.readyDone') : startingRace ? t('race.starting') : t('race.readyCta')}
             </motion.button>
 
             {amReady && (
-              <p style={{ ...muted, textAlign: 'center', marginTop: '12px', fontSize: '12px' }}>
-                Leaving this screen clears your READY flag.
+              <p className="mt-4 text-xs" style={{ color: 'var(--text-muted)' }}>
+                {t('race.leavingNote')}
               </p>
             )}
-          </div>
+          </motion.section>
         )}
 
-        {/* ─── Waiting for opponent ─── */}
+        {/* ═══ Waiting for opponent ════════════════════════════════════════ */}
         {phase === 'waiting' && (
-          <div style={panel}>
-            <div style={panelTitle}>Finished!</div>
-            <div style={waitingRow}>
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
-                style={spinner}
+          <motion.section
+            initial={motionSafe ? { opacity: 0, y: 18 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            className="panel panel-accent panel-pad-lg mb-10 text-center"
+          >
+            <h2 className="display-m" style={{ color: 'var(--text-primary)' }}>
+              {t('race.finishedTitle')}
+            </h2>
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <span
+                className="animate-spin rounded-full border-2"
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderColor: 'var(--border-subtle)',
+                  borderTopColor: 'var(--neon-cyan)',
+                }}
+                aria-hidden="true"
               />
-              <span style={{ ...muted, fontSize: '14px' }}>
+              <span className="text-[15px]" style={{ color: 'var(--text-secondary)' }}>
                 {submitting
-                  ? 'Saving your time…'
-                  : `Waiting for ${opponentPlayer?.profiles?.display_name || 'your opponent'} to finish…`}
+                  ? t('race.savingTime')
+                  : t('race.waitingOpponentFinish', {
+                      name: opponentPlayer?.profiles?.display_name || t('race.opponentFallback'),
+                    })}
               </span>
             </div>
-            {myTimeMs && (
-              <div style={timeBox}>{formatTime(myTimeMs)}</div>
-            )}
-          </div>
+            {myTimeMs && <TimeBox value={formatTime(myTimeMs)} />}
+          </motion.section>
         )}
 
         {(phase === 'racing' || phase === 'waiting') && (
           <>
-            {/* ─── Race Track ─── */}
-            <motion.div
-              animate={crashTrigger > 0 ? {
+            {/* ═══ Track — both players, one clear comparison ═══════════════ */}
+            <motion.section
+              animate={crashTrigger > 0 && motionSafe ? {
                 backgroundColor: ['rgba(239,68,68,0)', 'rgba(239,68,68,0.12)', 'rgba(239,68,68,0)'],
               } : {}}
               transition={{ duration: 0.6 }}
-              style={trackCard}
+              className="panel panel-pad relative mb-8 overflow-hidden"
             >
-              <div style={trackLabels}>
-                <span>START</span>
-                <span>FINISH</span>
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 bg-grid-fine opacity-30"
+              />
+
+              <div className="relative">
+                <div
+                  className="font-racing mb-4 flex justify-between text-[10px] font-bold uppercase"
+                  style={{ color: 'var(--text-muted)', letterSpacing: '0.16em' }}
+                >
+                  <span>{t('race.start')}</span>
+                  <span>{t('race.finish')}</span>
+                </div>
+
+                <RaceTrack
+                  player={myPlayer?.profiles}
+                  progress={progress}
+                  isCurrentPlayer={true}
+                  carState={myCarState}
+                  colorIndex={0}
+                />
+                <RaceTrack
+                  player={opponentPlayer?.profiles}
+                  progress={opponentProgress}
+                  isCurrentPlayer={false}
+                  carState={opponentCarState}
+                  colorIndex={1}
+                />
               </div>
+            </motion.section>
 
-              <RaceTrack
-                player={myPlayer?.profiles}
-                progress={progress}
-                isCurrentPlayer={true}
-                carState={myCarState}
-                colorIndex={0}
-              />
-              <RaceTrack
-                player={opponentPlayer?.profiles}
-                progress={opponentProgress}
-                isCurrentPlayer={false}
-                carState={opponentCarState}
-                colorIndex={1}
-              />
-            </motion.div>
-
-            <div style={{ marginBottom: '16px' }}>
-              <TypingText phrase={phrase} typedText={typedText} currentIndex={currentIndex} />
+            {/* ═══ Phrase — JetBrains Mono, English, untouched ═════════════ */}
+            <div className="mb-6">
+              <TypingText phrase={phrase} typedText={typedText} currentIndex={currentIndex} scale="md" />
             </div>
 
-            <div style={progressTrack}>
-              <motion.div
-                animate={{ width: `${progress}%` }}
-                transition={{ type: 'spring', stiffness: 120, damping: 20 }}
-                style={progressFill}
-              />
+            <div className="mb-7">
+              <ProgressRail value={progress} />
             </div>
 
-            <div style={hint}>
-              {isFinished ? 'Waiting for the result…' : 'Type the text above — every character counts'}
-            </div>
+            {/* ═══ Telemetry ═════════════════════════════════════════════════ */}
+            <LiveTypingMetrics
+              correctChars={currentIndex}
+              totalKeystrokes={totalKeystrokes}
+              errors={errors}
+              startTime={startTime}
+              endTime={endTime}
+              running={raceStarted && !isFinished}
+            />
+
+            <p className="mt-6 text-center text-xs" style={{ color: 'var(--text-muted)' }}>
+              {isFinished ? t('race.hintWaiting') : t('race.hint')}
+            </p>
           </>
         )}
 
         {submitError && (
-          <div style={{ ...panel, marginTop: '16px', borderColor: 'rgba(239,68,68,0.35)' }}>
-            <div style={{ color: '#ef4444', fontSize: '13px', marginBottom: '10px' }}>{submitError}</div>
-            <p style={{ ...muted, fontSize: '12px' }}>
-              Reload this page to retry — duplicate submissions are ignored by the server.
+          <div
+            className="panel mt-6 p-5"
+            style={{ borderColor: 'rgba(239,68,68,0.35)' }}
+          >
+            <div style={{ color: '#ef4444', fontSize: '13px', marginBottom: '8px' }}>{submitError}</div>
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              {t('race.retryNote')}
             </p>
           </div>
         )}
+      </main>
+    </AppShell>
+  )
+}
+
+// ─── Access denied / not found ─────────────────────────────────────────────
+/**
+ * Shown when the match cannot be shown to this session: a wrong id, a match the
+ * user is not competing in, or a row RLS refused to return.
+ *
+ * The copy is deliberately identical in every failure case and names no
+ * opponent, no round and no reason, so this screen cannot be used to probe which
+ * match ids exist or who is in them.
+ */
+function RaceUnavailable() {
+  const navigate = useNavigate()
+  const { t } = useI18n()
+
+  return (
+    <AppShell width="panel">
+      <main className="flex min-h-[70vh] flex-col items-center justify-center text-center">
+        <span className="mb-4 text-[48px] leading-none" aria-hidden="true">🔒</span>
+        <h1
+          className="font-racing mb-3 text-3xl font-extrabold"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          {t('race.unavailableTitle')}
+        </h1>
+        <p className="mb-7 max-w-sm text-sm" style={{ color: 'var(--text-secondary)' }}>
+          {t('race.unavailableBody')}
+        </p>
+        <button
+          className="btn-primary btn-lg"
+          onClick={() => navigate('/dashboard', { replace: true })}
+        >
+          {t('common.backToDashboard')}
+        </button>
+      </main>
+    </AppShell>
+  )
+}
+
+// ─── Competitor panel ───────────────────────────────────────────────────────
+/** One side of the head-to-head on the READY gate. */
+function CompetitorPanel({ name, ready, isMine = false }) {
+  const { t } = useI18n()
+  const accent = isMine ? '#00f5ff' : '#8b5cf6'
+
+  return (
+    <div
+      className="min-w-0 px-3 py-6 sm:px-6 sm:py-8"
+      style={{
+        borderRadius: 'var(--radius-lg)',
+        background: ready ? 'rgba(16,185,129,0.09)' : 'var(--bg-inset)',
+        border: `1px solid ${ready ? 'rgba(16,185,129,0.38)' : 'var(--border-glass)'}`,
+        boxShadow: ready ? '0 0 34px -16px rgba(16,185,129,0.7)' : 'none',
+      }}
+    >
+      <div
+        className="font-racing overflow-hidden text-ellipsis whitespace-nowrap text-base font-bold sm:text-lg"
+        style={{ color: ready ? '#10b981' : 'var(--text-secondary)' }}
+        title={name}
+      >
+        {name}
+      </div>
+      <div
+        className="font-racing mt-2 text-[10px] font-bold uppercase"
+        style={{ color: ready ? '#10b981' : accent, letterSpacing: '0.14em' }}
+      >
+        {ready ? t('labels.matchStatus.ready') : '—'}
       </div>
     </div>
   )
 }
 
-// ─── Ready pill ─────────────────────────────────────────────────────────────
-function ReadyPill({ name, ready, isMe }) {
+/** Final time. JetBrains Mono so digits never jitter while typing. */
+function TimeBox({ value }) {
   return (
-    <div style={{
-      flex: 1,
-      padding: '16px',
-      borderRadius: '12px',
-      background: ready ? 'rgba(16,185,129,0.12)' : 'rgba(255,255,255,0.03)',
-      border: `1px solid ${ready ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.08)'}`,
-      textAlign: 'center',
-    }}>
-      <div style={{
-        fontFamily: 'Rajdhani, sans-serif',
-        fontSize: '15px',
-        fontWeight: 700,
-        color: ready ? '#10b981' : 'rgba(255,255,255,0.45)',
-        letterSpacing: '0.05em',
-        marginBottom: '4px',
-      }}>
-        {isMe ? 'YOU' : (name || 'OPPONENT')}
-      </div>
-      <div style={{
-        fontSize: '11px',
-        fontFamily: 'Rajdhani, sans-serif',
-        fontWeight: 700,
-        letterSpacing: '0.12em',
-        color: ready ? '#10b981' : 'rgba(255,255,255,0.25)',
-      }}>
-        {ready ? 'READY' : 'NOT READY'}
-      </div>
+    <div
+      className="mx-auto mt-8 w-fit px-8 py-5"
+      style={{
+        borderRadius: 'var(--radius-lg)',
+        background: 'var(--bg-inset)',
+        border: '1px solid var(--border-glass)',
+      }}
+    >
+      <span className="num text-[26px] font-bold" style={{ color: '#00f5ff' }}>
+        {value}
+      </span>
     </div>
   )
 }
 
 // ─── Match Result Overlay ────────────────────────────────────────────────────
 function MatchResultOverlay({
-  iWon, byForfeit, status, myTimeMs, winnerTime, opponentName, tournamentId, onNavigate,
+  iWon, byForfeit, status, myTimeMs, winnerTime, opponentName, tournamentId, onNavigate, motionSafe,
 }) {
+  const { t } = useI18n()
   const target = tournamentId ? `/tournament/${tournamentId}` : '/dashboard'
+  const opponent = opponentName || t('race.opponentFallback')
+
+  const message = byForfeit
+    ? t('race.victoryByForfeit', { name: opponent })
+    : status === 'forfeit'
+      ? t('race.defeatByForfeit')
+      : iWon
+        ? t('race.beatOpponent', { name: opponent })
+        : t('race.opponentWins', { name: opponent })
+
+  const glow = iWon ? '16,185,129' : '239,68,68'
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      style={overlay}
+      className="fixed inset-0 z-40 flex items-center justify-center p-6"
+      style={{
+        background: 'rgba(5,6,14,0.9)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+      }}
     >
       <motion.div
-        initial={{ scale: 0.8, y: 30 }}
+        initial={motionSafe ? { scale: 0.94, y: 24 } : false}
         animate={{ scale: 1, y: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        className="glass-card"
-        style={{ padding: '48px', textAlign: 'center', maxWidth: '440px', width: '100%' }}
+        className="panel panel-accent relative w-full overflow-hidden text-center"
+        style={{ padding: 'clamp(30px, 6vw, 52px)', maxWidth: 480 }}
       >
-        <div style={{ fontSize: '56px', marginBottom: '16px' }}>{iWon ? '🏆' : '😔'}</div>
-        <div style={{
-          fontFamily: 'Rajdhani, sans-serif',
-          fontSize: '40px',
-          fontWeight: 900,
-          color: iWon ? '#10b981' : '#ef4444',
-          marginBottom: '8px',
-          textShadow: iWon ? '0 0 30px rgba(16,185,129,0.5)' : '0 0 30px rgba(239,68,68,0.5)',
-        }}>
-          {iWon ? 'VICTORY!' : 'DEFEATED'}
-        </div>
-        <p style={{ ...muted, marginBottom: '24px', fontSize: '15px' }}>
-          {byForfeit
-            ? `${opponentName || 'Your opponent'} left the match.`
-            : status === 'forfeit'
-              ? 'You left the match.'
-              : iWon
-                ? `You beat ${opponentName || 'your opponent'}!`
-                : `${opponentName || 'Your opponent'} wins this round.`}
-        </p>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: `radial-gradient(460px 260px at 50% 0%, rgba(${glow},0.24), transparent 70%)`,
+          }}
+        />
 
-        {(winnerTime || myTimeMs) && (
-          <div style={timeBox}>
-            {formatTime(iWon ? (myTimeMs || winnerTime) : winnerTime || myTimeMs)}
+        <div className="relative">
+          <span className="mb-5 block text-[58px] leading-none" aria-hidden="true">
+            {iWon ? '🏆' : '😔'}
+          </span>
+
+          <div
+            className="font-racing font-black"
+            style={{
+              fontSize: 'clamp(32px, 7vw, 46px)',
+              lineHeight: 1,
+              color: iWon ? '#10b981' : '#ef4444',
+              textShadow: `0 0 34px rgba(${glow},0.5)`,
+            }}
+          >
+            {iWon ? t('race.victory') : t('race.defeat')}
           </div>
-        )}
 
-        <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="btn-primary"
-          style={{ width: '100%', padding: '14px', fontSize: '15px' }}
-          onClick={() => onNavigate(target, { replace: true })}
-        >
-          {iWon ? 'Continue to Tournament →' : 'Back to Tournament'}
-        </motion.button>
+          <p className="mt-5 text-[15px]" style={{ color: 'var(--text-secondary)' }}>
+            {message}
+          </p>
+
+          {(winnerTime || myTimeMs) && (
+            <div className="mt-8">
+              <TimeBox value={formatTime(iWon ? (myTimeMs || winnerTime) : winnerTime || myTimeMs)} />
+            </div>
+          )}
+
+          <motion.button
+            whileHover={motionSafe ? { scale: 1.02 } : undefined}
+            whileTap={motionSafe ? { scale: 0.98 } : undefined}
+            className="btn-primary btn-xl btn-cta mt-9"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={() => onNavigate(target, { replace: true })}
+          >
+            {iWon ? t('race.continue') : t('race.backToTournament')}
+          </motion.button>
+        </div>
       </motion.div>
     </motion.div>
   )
-}
-
-// ─── Styles ──────────────────────────────────────────────────────────────────
-const fullScreen = {
-  minHeight: '100vh',
-  background: '#080b14',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-}
-const muted = { color: 'rgba(255,255,255,0.5)', margin: 0 }
-const content = { position: 'relative', zIndex: 1, maxWidth: '1000px', margin: '0 auto', padding: '24px 20px', width: '100%' }
-const headerRow = {
-  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  flexWrap: 'wrap', gap: '12px', marginBottom: '28px',
-}
-const title = { fontFamily: 'Rajdhani, sans-serif', fontSize: '22px', fontWeight: 800, color: 'white' }
-const subtitle = {
-  display: 'flex', gap: '10px', marginTop: '4px', fontSize: '13px',
-  color: 'rgba(255,255,255,0.4)', fontFamily: 'Rajdhani, sans-serif',
-  fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase',
-}
-const panel = {
-  background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: '16px', padding: '28px', marginBottom: '24px',
-}
-const panelTitle = {
-  fontFamily: 'Rajdhani, sans-serif', fontSize: '22px', fontWeight: 800,
-  color: 'white', textAlign: 'center', marginBottom: '8px',
-}
-const readyRow = { display: 'flex', alignItems: 'center', gap: '14px' }
-const waitingRow = {
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  gap: '12px', marginBottom: '20px',
-}
-const spinner = {
-  width: '18px', height: '18px', borderRadius: '50%',
-  border: '2px solid rgba(255,255,255,0.15)',
-  borderTopColor: '#00f5ff',
-}
-const timeBox = {
-  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: '10px', padding: '14px', marginBottom: '24px',
-  fontFamily: 'JetBrains Mono, monospace', fontSize: '22px', color: '#00f5ff',
-  textAlign: 'center',
-}
-const trackCard = {
-  background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: '16px', padding: '20px', marginBottom: '24px',
-}
-const trackLabels = {
-  display: 'flex', justifyContent: 'space-between', marginBottom: '12px',
-  fontSize: '11px', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700,
-  letterSpacing: '0.1em', color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase',
-}
-const progressTrack = {
-  height: '4px', background: 'rgba(255,255,255,0.06)',
-  borderRadius: '2px', overflow: 'hidden', marginBottom: '12px',
-}
-const progressFill = {
-  height: '100%', background: 'linear-gradient(90deg, #00f5ff, #8b5cf6)',
-  borderRadius: '2px', boxShadow: '0 0 10px rgba(0,245,255,0.4)',
-}
-const hint = { textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '12px', fontFamily: 'Inter, sans-serif' }
-const overlay = {
-  position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(8,11,20,0.9)',
-  backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center',
-  justifyContent: 'center', padding: '24px',
 }

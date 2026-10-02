@@ -1,15 +1,37 @@
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
+import { Trophy, Plus, LogIn, ChevronRight, ArrowUpRight } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../services/supabase'
-import { Trophy, Plus, LogIn, LogOut, ChevronRight } from 'lucide-react'
-import { TOURNAMENT_STATUS_LABEL, placementLabel } from '../utils/bracket'
-import toast from 'react-hot-toast'
+import { useI18n, useLabels } from '../i18n'
+import { AppShell } from '../components/ui/AppShell'
+import { TopNav } from '../components/ui/TopNav'
+import { Footer } from '../components/ui/Footer'
+import { Badge } from '../components/ui/Badge'
+import { EmptyState } from '../components/ui/EmptyState'
 
+/**
+ * Dashboard.
+ *
+ * Composition, top to bottom: navigation, a welcome hero, the two primary
+ * actions, the tournaments you are in, then a quieter secondary block.
+ *
+ * The two actions are deliberately NOT two equal boxes. "Create" is the heavier
+ * primary move and gets the wide slot, the gradient edge and the glow;
+ * "Join" is a real but secondary move. That asymmetry is what stops the screen
+ * reading as a generic dashboard.
+ *
+ * Every number on this page is derived from the entries that were actually
+ * fetched — nothing is invented.
+ */
 export default function Dashboard() {
   const { user, profile, logout } = useAuth()
   const navigate = useNavigate()
+  const { t } = useI18n()
+  const labels = useLabels()
+  const motionSafe = !useReducedMotion()
   const [entries, setEntries] = useState([])
   const [loadingTournaments, setLoadingTournaments] = useState(true)
 
@@ -71,220 +93,273 @@ export default function Dashboard() {
   const handleLogout = async () => {
     await logout()
     navigate('/login')
-    toast.success('Signed out.')
+    toast.success(t('common.signedOut'))
   }
 
   const displayName = profile?.display_name || user?.user_metadata?.display_name || 'Racer'
 
   const hosting = entries.filter((e) => e.role === 'admin')
   const playing = entries.filter((e) => e.role === 'player')
+  const liveCount = entries.filter(
+    (e) => e.tournament.status !== 'completed'
+  ).length
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#080b14',
-      position: 'relative',
-    }}>
-      <div className="bg-grid" style={{ position: 'absolute', inset: 0, opacity: 0.3 }} />
-
-      {/* Header */}
-      <header style={{
-        position: 'relative',
-        zIndex: 1,
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        background: 'rgba(8,11,20,0.8)',
-        backdropFilter: 'blur(12px)',
-        padding: '0 24px',
-        height: '64px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <div className="gradient-text" style={{
-          fontFamily: 'Rajdhani, sans-serif',
-          fontSize: '24px',
-          fontWeight: 900,
-        }}>
-          TYPERACER
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px' }}>
-            {displayName}
-          </span>
-          <button onClick={handleLogout} className="btn-ghost" style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <LogOut size={14} />
-            Sign Out
-          </button>
-        </div>
-      </header>
-
-      <main style={{ position: 'relative', zIndex: 1, maxWidth: '1000px', margin: '0 auto', padding: '48px 24px' }}>
-        {/* Welcome */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{ marginBottom: '48px' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-            <span style={{ fontSize: '14px', color: '#10b981', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              ● Online
-            </span>
+    <AppShell width="shell" nav={<TopNav onSignOut={handleLogout} />} footer={<Footer />}>
+      <main className="pb-24">
+        {/* ═══ Welcome hero ═══════════════════════════════════════════════ */}
+        <section className="relative overflow-hidden pb-14 pt-14 lg:pb-20 lg:pt-20">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+            <div className="bg-grid-fade absolute inset-x-0 top-0 h-full opacity-70" />
+            <div
+              className="aurora"
+              style={{
+                top: '-40%',
+                left: '30%',
+                width: 620,
+                height: 620,
+                background: 'radial-gradient(circle, rgba(139,92,246,0.18), transparent 66%)',
+              }}
+            />
           </div>
-          <h1 style={{
-            fontFamily: 'Rajdhani, sans-serif',
-            fontSize: 'clamp(32px, 5vw, 52px)',
-            fontWeight: 800,
-            color: 'white',
-            lineHeight: 1.1,
-          }}>
-            Welcome back,{' '}
-            <span className="neon-text-cyan">{displayName}</span>
-          </h1>
-          <p style={{ color: 'rgba(255,255,255,0.4)', marginTop: '8px', fontSize: '16px' }}>
-            Ready to race? Create a new tournament or join an existing one.
-          </p>
-        </motion.div>
 
-        {/* Action cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginBottom: '48px' }}>
-          <ActionCard
-            icon={<Plus size={28} />}
-            title="Create Tournament"
-            description="Host a new typing tournament and invite players with a code."
-            color="#00f5ff"
-            onClick={() => navigate('/create-tournament')}
-            delay={0.1}
-          />
-          <ActionCard
-            icon={<LogIn size={28} />}
-            title="Join Tournament"
-            description="Enter a tournament code to join a race already in progress."
-            color="#8b5cf6"
-            onClick={() => navigate('/join-tournament')}
-            delay={0.2}
-          />
-        </div>
+          <div className="relative">
+            <motion.div
+              initial={motionSafe ? { opacity: 0, y: 22 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55 }}
+            >
+              <Badge tone="ok" dot>
+                {t('dashboard.online')}
+              </Badge>
 
-        {/* Recent tournaments */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <h2 style={{
-            fontFamily: 'Rajdhani, sans-serif',
-            fontSize: '20px',
-            fontWeight: 700,
-            color: 'rgba(255,255,255,0.8)',
-            marginBottom: '16px',
-            letterSpacing: '0.05em',
-            textTransform: 'uppercase',
-          }}>
-            Recent Tournaments
-          </h2>
+              <h1 className="display-l mt-6">
+                {t('dashboard.greeting')}{' '}
+                <span className="gradient-text">{displayName}</span>
+              </h1>
+
+              <p className="lede measure mt-5">{t('dashboard.subtitle')}</p>
+            </motion.div>
+
+            {/* Real counts, straight from what was fetched. */}
+            <motion.dl
+              initial={motionSafe ? { opacity: 0, y: 18 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.55, delay: 0.12 }}
+              className="mt-12 grid grid-cols-2 gap-px sm:grid-cols-4"
+              style={{ background: 'var(--border-glass)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}
+            >
+              <Metric label={t('dashboard.statTotal')} value={entries.length} />
+              <Metric label={t('dashboard.statHosting')} value={hosting.length} accent="#f59e0b" />
+              <Metric label={t('dashboard.statPlaying')} value={playing.length} accent="#00f5ff" />
+              <Metric label={t('dashboard.statLive')} value={liveCount} accent="#8b5cf6" />
+            </motion.dl>
+          </div>
+        </section>
+
+        {/* ═══ Primary actions — asymmetric ═══════════════════════════════ */}
+        <section className="pb-20">
+          <div className="grid gap-5 lg:grid-cols-12">
+            <motion.button
+              type="button"
+              initial={motionSafe ? { opacity: 0, y: 22 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.08 }}
+              whileHover={motionSafe ? { y: -5 } : undefined}
+              onClick={() => navigate('/create-tournament')}
+              className="panel panel-accent group relative overflow-hidden p-8 text-left lg:col-span-7 lg:p-11"
+              style={{ cursor: 'pointer', borderColor: 'rgba(0,245,255,0.22)' }}
+            >
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background:
+                    'radial-gradient(560px 300px at 100% 0%, rgba(0,245,255,0.16), transparent 68%),' +
+                    'radial-gradient(460px 280px at 0% 100%, rgba(139,92,246,0.14), transparent 68%)',
+                }}
+              />
+
+              <div className="relative flex h-full flex-col">
+                <span
+                  className="grid h-14 w-14 place-items-center"
+                  style={{
+                    borderRadius: 'var(--radius-lg)',
+                    background: 'linear-gradient(135deg, rgba(0,245,255,0.22), rgba(139,92,246,0.2))',
+                    border: '1px solid rgba(0,245,255,0.34)',
+                    color: '#7df3ff',
+                    boxShadow: '0 0 30px -8px rgba(0,245,255,0.6)',
+                  }}
+                  aria-hidden="true"
+                >
+                  <Plus size={26} strokeWidth={2} />
+                </span>
+
+                <h2 className="display-m mt-8" style={{ color: 'var(--text-primary)' }}>
+                  {t('dashboard.createTitle')}
+                </h2>
+                <p className="body-copy measure mt-4">{t('dashboard.createDesc')}</p>
+
+                <span
+                  className="mt-9 inline-flex items-center gap-2 font-racing text-sm font-bold uppercase"
+                  style={{ color: 'var(--neon-cyan)', letterSpacing: '0.1em' }}
+                >
+                  {t('dashboard.createCta')}
+                  <ArrowUpRight
+                    size={17}
+                    aria-hidden="true"
+                    style={{ transition: 'transform 0.25s var(--ease-out)' }}
+                  />
+                </span>
+              </div>
+            </motion.button>
+
+            <motion.button
+              type="button"
+              initial={motionSafe ? { opacity: 0, y: 22 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.16 }}
+              whileHover={motionSafe ? { y: -5 } : undefined}
+              onClick={() => navigate('/join-tournament')}
+              className="panel group relative overflow-hidden p-8 text-left lg:col-span-5 lg:p-11"
+              style={{ cursor: 'pointer' }}
+            >
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0"
+                style={{
+                  background: 'radial-gradient(420px 260px at 0% 0%, rgba(139,92,246,0.14), transparent 70%)',
+                }}
+              />
+
+              <div className="relative flex h-full flex-col">
+                <span
+                  className="grid h-14 w-14 place-items-center"
+                  style={{
+                    borderRadius: 'var(--radius-lg)',
+                    background: 'rgba(139,92,246,0.14)',
+                    border: '1px solid rgba(139,92,246,0.3)',
+                    color: '#c4b5fd',
+                  }}
+                  aria-hidden="true"
+                >
+                  <LogIn size={24} strokeWidth={2} />
+                </span>
+
+                <h2 className="display-s mt-8" style={{ color: 'var(--text-primary)' }}>
+                  {t('dashboard.joinTitle')}
+                </h2>
+                <p className="body-copy mt-4">{t('dashboard.joinDesc')}</p>
+
+                <span
+                  className="mt-auto block pt-9 font-racing text-sm font-bold uppercase"
+                  style={{ color: 'var(--violet)', letterSpacing: '0.1em' }}
+                >
+                  {t('dashboard.joinCta')}
+                </span>
+              </div>
+            </motion.button>
+          </div>
+        </section>
+
+        {/* ═══ Recent tournaments ═════════════════════════════════════════ */}
+        <section>
+          <div className="mb-8 flex items-end justify-between gap-4">
+            <div>
+              <span className="eyebrow">{t('dashboard.recent')}</span>
+            </div>
+          </div>
 
           {loadingTournaments ? (
-            <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>Loading...</div>
+            <p className="body-copy">{t('dashboard.loading')}</p>
           ) : entries.length === 0 ? (
-            <div className="glass-card" style={{ padding: '32px', textAlign: 'center' }}>
-              <Trophy size={36} style={{ color: 'rgba(255,255,255,0.2)', margin: '0 auto 12px' }} />
-              <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '14px' }}>
-                No tournaments yet. Create or join one to get started!
-              </p>
-            </div>
+            <EmptyState
+              icon={<Trophy size={20} />}
+              title={t('dashboard.emptyTitle')}
+              body={t('dashboard.emptyBody')}
+            />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div className="flex flex-col gap-14">
               {hosting.length > 0 && (
                 <TournamentGroup
-                  title="Hosting"
-                  hint="You are the admin of these tournaments."
+                  title={t('dashboard.hosting')}
+                  hint={t('dashboard.hostingHint')}
                   color="#f59e0b"
                   entries={hosting}
+                  labels={labels}
+                  motionSafe={motionSafe}
                 />
               )}
               {playing.length > 0 && (
                 <TournamentGroup
-                  title="Playing"
-                  hint="You joined these as a player."
+                  title={t('dashboard.playing')}
+                  hint={t('dashboard.playingHint')}
                   color="#00f5ff"
                   entries={playing}
+                  labels={labels}
+                  motionSafe={motionSafe}
                 />
               )}
             </div>
           )}
-        </motion.div>
+        </section>
       </main>
+    </AppShell>
+  )
+}
+
+// ─── Hero metric ────────────────────────────────────────────────────────────
+function Metric({ label, value, accent = 'var(--text-primary)' }) {
+  return (
+    <div className="p-6" style={{ background: 'rgba(10,14,26,0.8)' }}>
+      <dt className="label-xs">{label}</dt>
+      <dd
+        className="metric-value metric-lg mt-3"
+        style={{ color: accent, margin: 0 }}
+      >
+        {value}
+      </dd>
     </div>
   )
 }
 
-// ─── Action Card ─────────────────────────────────────────────────────────────
-function ActionCard({ icon, title, description, color, onClick, delay = 0 }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay }}
-      whileHover={{ y: -4, scale: 1.02 }}
-      onClick={onClick}
-      className="glass-card"
-      style={{
-        padding: '28px',
-        cursor: 'pointer',
-        borderColor: `${color}22`,
-        transition: 'border-color 0.2s',
-      }}
-    >
-      <div style={{
-        width: '52px',
-        height: '52px',
-        borderRadius: '12px',
-        background: `${color}15`,
-        border: `1px solid ${color}33`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color,
-        marginBottom: '16px',
-      }}>
-        {icon}
-      </div>
-      <h3 style={{
-        fontFamily: 'Rajdhani, sans-serif',
-        fontSize: '20px',
-        fontWeight: 700,
-        color: 'white',
-        marginBottom: '8px',
-      }}>
-        {title}
-      </h3>
-      <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', lineHeight: 1.6 }}>
-        {description}
-      </p>
-    </motion.div>
-  )
-}
+function TournamentGroup({ title, hint, color, entries, labels, motionSafe }) {
+  const navigate = useNavigate()
 
-function TournamentGroup({ title, hint, color, entries }) {
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '10px' }}>
-        <span style={{
-          fontFamily: 'Rajdhani, sans-serif', fontSize: '14px', fontWeight: 800,
-          letterSpacing: '0.12em', textTransform: 'uppercase', color,
-        }}
+      {/* Section header as an editorial rule, not a boxed title. */}
+      <div
+        className="mb-5 flex flex-wrap items-baseline gap-x-4 gap-y-1 border-b pb-4"
+        style={{ borderColor: 'var(--border-glass)' }}
+      >
+        <span
+          className="font-racing text-[13px] font-bold uppercase"
+          style={{ color, letterSpacing: '0.18em' }}
         >
           {title}
         </span>
-        <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)' }}>{hint}</span>
+        <span className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
+          {hint}
+        </span>
+        <span
+          className="num ml-auto text-[12px]"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          {entries.length}
+        </span>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+
+      <div className="flex flex-col gap-2.5">
         {entries.map((e) => (
           <TournamentRow
             key={e.tournament.id}
             tournament={e.tournament}
             isAdmin={e.role === 'admin'}
             myStatus={e.myStatus}
+            placement={e.placement}
+            labels={labels}
+            motionSafe={motionSafe}
             onClick={() => navigate(routeFor(e.tournament))}
           />
         ))}
@@ -293,14 +368,14 @@ function TournamentGroup({ title, hint, color, entries }) {
   )
 }
 
-// ─── Tournament Row ───────────────────────────────────────────────────────────
-const STATUS_COLORS = {
-  lobby: '#f59e0b',
-  practice: '#f59e0b',
-  registration_closed: '#a855f7',
-  bracket_ready: '#00f5ff',
-  round_active: '#10b981',
-  completed: '#8b5cf6',
+// ─── Tournament Row ─────────────────────────────────────────────────────────
+const STATUS_TONE = {
+  lobby: 'warn',
+  practice: 'warn',
+  registration_closed: 'accent',
+  bracket_ready: 'info',
+  round_active: 'ok',
+  completed: 'neutral',
 }
 
 /** A started tournament belongs on the overview, not the lobby. */
@@ -310,78 +385,71 @@ function routeFor(t) {
     : `/lobby/${t.id}`
 }
 
-function TournamentRow({ tournament, onClick, isAdmin, myStatus }) {
+function TournamentRow({ tournament, onClick, isAdmin, myStatus, placement, labels, motionSafe }) {
+  const { t } = useI18n()
+  const hostLabel = t('common.host')
+
   return (
-    <motion.div
-      whileHover={{ x: 4 }}
+    <motion.button
+      type="button"
+      whileHover={motionSafe ? { x: 6 } : undefined}
       onClick={onClick}
-      className="glass-card"
-      style={{
-        padding: '16px 20px',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '12px',
-      }}
+      className="surface group flex w-full items-center justify-between gap-5 text-left transition-colors hover:border-[var(--border-strong)]"
+      style={{ padding: '19px 22px', cursor: 'pointer' }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
-          <span style={{
-            fontFamily: 'Rajdhani, sans-serif',
-            fontSize: '16px',
-            fontWeight: 700,
-            color: 'white',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span className="mb-2 flex flex-wrap items-center gap-2.5">
+          <span
+            className="font-racing overflow-hidden text-ellipsis whitespace-nowrap text-lg font-bold"
+            style={{ color: 'var(--text-primary)' }}
+          >
             {tournament.name}
           </span>
           {isAdmin && (
-            <span style={{
-              fontSize: '10px', fontWeight: 800, letterSpacing: '0.1em',
-              color: '#f59e0b', background: 'rgba(245,158,11,0.12)',
-              padding: '2px 7px', borderRadius: '4px',
-              border: '1px solid rgba(245,158,11,0.25)', flexShrink: 0,
-            }}>
-              HOST
-            </span>
+            <Badge tone="warn" style={{ fontSize: 10, padding: '2px 8px' }}>
+              {hostLabel}
+            </Badge>
           )}
-          <span style={{
-            fontFamily: 'JetBrains Mono, monospace',
-            fontSize: '11px',
-            color: '#00f5ff',
-            background: 'rgba(0,245,255,0.08)',
-            padding: '2px 8px',
-            borderRadius: '4px',
-            flexShrink: 0,
-          }}>
+          <span
+            className="num shrink-0 text-[11px]"
+            style={{
+              color: 'var(--neon-cyan)',
+              background: 'rgba(0,245,255,0.08)',
+              padding: '3px 9px',
+              borderRadius: '5px',
+              letterSpacing: '0.08em',
+            }}
+          >
             {tournament.code}
           </span>
-        </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <span style={{
-            fontSize: '12px',
-            color: STATUS_COLORS[tournament.status] || 'rgba(255,255,255,0.4)',
-            textTransform: 'capitalize',
-          }}>
-            ● {TOURNAMENT_STATUS_LABEL[tournament.status] || tournament.status}
-          </span>
-          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.3)', textTransform: 'capitalize' }}>
-            {tournament.difficulty}
+        </span>
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <Badge
+            tone={STATUS_TONE[tournament.status] || 'neutral'}
+            dot
+            style={{ fontSize: 10, padding: '2px 8px' }}
+          >
+            {labels.tournamentStatus(tournament.status)}
+          </Badge>
+          <span className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
+            {labels.difficulty(tournament.difficulty)}
           </span>
           {myStatus && myStatus !== 'active' && (
-            <span style={{
-              fontSize: '10px', fontWeight: 700, letterSpacing: '0.1em',
-              textTransform: 'uppercase', color: 'rgba(255,255,255,0.35)',
-            }}>
-              {placementLabel(myStatus.placement) || myStatus}
+            <span
+              className="text-[10px] font-semibold uppercase"
+              style={{ color: 'var(--text-muted)', letterSpacing: '0.12em' }}
+            >
+              {labels.placement(placement) || labels.playerStatus(myStatus)}
             </span>
           )}
-        </div>
-      </div>
-      <ChevronRight size={18} style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
-    </motion.div>
+        </span>
+      </span>
+
+      <ChevronRight
+        size={20}
+        style={{ color: 'var(--text-muted)', flexShrink: 0 }}
+        aria-hidden="true"
+      />
+    </motion.button>
   )
 }

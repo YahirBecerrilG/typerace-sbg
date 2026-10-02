@@ -1,32 +1,36 @@
-import { motion } from 'framer-motion'
-import { getRoundName, MATCH_STATUS_LABEL } from '../utils/bracket'
+import { motion, useReducedMotion } from 'framer-motion'
+import { useI18n, useLabels } from '../i18n'
 
 /**
  * Visual tournament bracket component.
  * Renders rounds and matches from left (earliest) to right (final).
  *
  * Every value shown here comes from the server: seeds, winners, BYEs and
- * statuses are decided by the RPCs, never computed in the client.
+ * statuses are decided by the RPCs, never computed in the client. Round names
+ * and status captions come from the i18n layer via useLabels().
+ *
+ * On narrow screens the columns stay at their natural width and the parent
+ * scrolls horizontally (.bracket-scroll) — squeezing 8 columns into a phone
+ * would make the text unreadable.
  */
 export function TournamentBracket({ rounds = [], currentRound = 1, myPlayerId }) {
+  const { t } = useI18n()
+
   if (!rounds || rounds.length === 0) {
     return (
-      <div style={{ color: 'rgba(255,255,255,0.3)', textAlign: 'center', padding: '40px' }}>
-        Bracket not yet generated
-      </div>
+      <p
+        className="py-10 text-center text-sm"
+        style={{ color: 'var(--text-muted)' }}
+      >
+        {t('bracket.empty')}
+      </p>
     )
   }
 
   const totalRounds = rounds.length
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'flex-start',
-      overflowX: 'auto',
-      padding: '20px 0',
-      minHeight: '200px',
-    }}>
+    <div className="flex items-start" style={{ minHeight: '200px' }}>
       {rounds.map((round, rIdx) => (
         <RoundColumn
           key={round.id || rIdx}
@@ -44,61 +48,70 @@ export function TournamentBracket({ rounds = [], currentRound = 1, myPlayerId })
 }
 
 function RoundColumn({ round, roundIndex, totalRounds, isActive, isPending, isDone, myPlayerId }) {
+  const { t } = useI18n()
+  const labels = useLabels()
   const matches = round.matches || []
   const spacingFactor = Math.pow(2, roundIndex)
 
+  const accent = isActive
+    ? 'var(--neon-cyan)'
+    : isPending
+      ? 'var(--neon-yellow)'
+      : isDone
+        ? 'var(--text-secondary)'
+        : 'var(--text-muted)'
+
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      minWidth: '190px',
-      position: 'relative',
-    }}>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        minWidth: '184px',
+        position: 'relative',
+      }}
+    >
       {/* Round label */}
-      <div style={{
-        textAlign: 'center',
-        padding: '0 8px 16px',
-        fontFamily: 'Rajdhani, sans-serif',
-        fontSize: '13px',
-        fontWeight: 700,
-        letterSpacing: '0.1em',
-        textTransform: 'uppercase',
-        color: isActive ? '#00f5ff' : isPending ? '#f59e0b' : isDone ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.3)',
-      }}>
-        {getRoundName(round.round_number, totalRounds)}
+      <div className="px-2 pb-4 text-center">
+        <span
+          className="font-racing block text-[12px] font-bold uppercase tracking-[0.14em]"
+          style={{ color: accent }}
+        >
+          {labels.roundName(round.round_number, totalRounds)}
+        </span>
+
         {isActive && (
-          <span style={{
-            display: 'block',
-            width: '6px',
-            height: '6px',
-            background: '#00f5ff',
-            borderRadius: '50%',
-            margin: '4px auto 0',
-            boxShadow: '0 0 8px rgba(0,245,255,0.8)',
-          }}
+          <span
+            className="mx-auto mt-1.5 block"
+            style={{
+              width: 6,
+              height: 6,
+              background: 'var(--neon-cyan)',
+              borderRadius: '50%',
+              boxShadow: '0 0 8px rgba(0,245,255,0.8)',
+            }}
+            aria-hidden="true"
           />
         )}
+
         {isPending && (
-          <span style={{
-            display: 'block',
-            fontSize: '9px',
-            letterSpacing: '0.1em',
-            color: 'rgba(245,158,11,0.7)',
-            marginTop: '3px',
-          }}
+          <span
+            className="mt-1 block text-[9px] uppercase tracking-[0.12em]"
+            style={{ color: 'rgba(245,158,11,0.75)' }}
           >
-            Waiting for host
+            {t('bracket.waitingForHost')}
           </span>
         )}
       </div>
 
       {/* Matches */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: `${spacingFactor * 8}px`,
-        padding: `${spacingFactor * 16}px 8px`,
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: `${spacingFactor * 8}px`,
+          padding: `${spacingFactor * 16}px 6px`,
+        }}
+      >
         {matches.map((match, mIdx) => (
           <MatchCard
             key={match.id || mIdx}
@@ -115,29 +128,33 @@ function RoundColumn({ round, roundIndex, totalRounds, isActive, isPending, isDo
 }
 
 function MatchCard({ match, isActive, isPending, isMine }) {
+  const { t } = useI18n()
+  const labels = useLabels()
+  const motionSafe = !useReducedMotion()
+
   const p1 = match.player1
   const p2 = match.player2
   const winnerId = match.winner_id
   const isBye = match.status === 'bye'
   const isDecided = ['completed', 'bye', 'forfeit'].includes(match.status)
 
-  const nameOf = (tp) => tp?.profiles?.display_name || 'TBD'
+  const nameOf = (tp) => tp?.profiles?.display_name || t('bracket.tbd')
   const seedOf = (tp) => (tp?.seed ? `#${tp.seed}` : null)
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={motionSafe ? { opacity: 0, scale: 0.94 } : false}
       animate={{ opacity: 1, scale: 1 }}
       style={{
         background: isMine
-          ? 'rgba(0,245,255,0.08)'
+          ? 'rgba(0,245,255,0.07)'
           : isActive
-            ? 'rgba(255,255,255,0.04)'
-            : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${isMine ? 'rgba(0,245,255,0.35)' : 'rgba(255,255,255,0.08)'}`,
-        borderRadius: '8px',
+            ? 'var(--bg-inset)'
+            : 'rgba(255,255,255,0.018)',
+        border: `1px solid ${isMine ? 'rgba(0,245,255,0.32)' : 'var(--border-glass)'}`,
+        borderRadius: 'var(--radius-sm)',
         overflow: 'hidden',
-        opacity: isPending ? 0.75 : 1,
+        opacity: isPending ? 0.72 : 1,
       }}
     >
       {/* A BYE is a single line: the player advances without racing. */}
@@ -149,17 +166,13 @@ function MatchCard({ match, isActive, isPending, isMine }) {
             isWinner
             winnerId={winnerId}
             playerId={p1?.id}
+            tbdLabel={t('bracket.tbd')}
           />
-          <div style={{
-            marginTop: '6px',
-            fontFamily: 'Rajdhani, sans-serif',
-            fontSize: '10px',
-            fontWeight: 700,
-            letterSpacing: '0.12em',
-            textTransform: 'uppercase',
-            color: 'rgba(0,245,255,0.7)',
-          }}>
-            BYE — ADVANCES
+          <div
+            className="font-racing mt-1.5 text-[10px] font-bold uppercase tracking-[0.12em]"
+            style={{ color: 'rgba(0,245,255,0.7)' }}
+          >
+            {t('bracket.byeAdvances')}
           </div>
         </div>
       ) : (
@@ -172,7 +185,7 @@ function MatchCard({ match, isActive, isPending, isMine }) {
             playerId={match.player1_id}
             isForfeit={match.status === 'forfeit' && winnerId === match.player2_id}
           />
-          <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+          <div style={{ height: '1px', background: 'var(--border-glass)' }} />
           <PlayerSlot
             name={p2 === null ? null : nameOf(p2)}
             seed={seedOf(p2)}
@@ -181,19 +194,15 @@ function MatchCard({ match, isActive, isPending, isMine }) {
             playerId={match.player2_id}
             isForfeit={match.status === 'forfeit' && winnerId === match.player1_id}
           />
-          {match.status && match.status !== 'bye' && (
-            <div style={{
-              padding: '4px 12px 6px',
-              fontFamily: 'Rajdhani, sans-serif',
-              fontSize: '9px',
-              fontWeight: 700,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: statusColor(match.status),
-              borderTop: '1px solid rgba(255,255,255,0.05)',
-            }}
+          {match.status && (
+            <div
+              className="font-racing px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.12em]"
+              style={{
+                color: statusColor(match.status),
+                borderTop: '1px solid var(--border-glass)',
+              }}
             >
-              {MATCH_STATUS_LABEL[match.status] || match.status}
+              {labels.matchStatus(match.status)}
               {match.winner_time_ms ? ` · ${formatMs(match.winner_time_ms)}` : ''}
             </div>
           )}
@@ -203,62 +212,36 @@ function MatchCard({ match, isActive, isPending, isMine }) {
   )
 }
 
-function PlayerSlot({ name, seed, isWinner, isForfeit }) {
+function PlayerSlot({ name, seed, isWinner, isForfeit, tbdLabel }) {
   if (name === null) {
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        padding: '8px 12px',
-      }}
-      >
-        <span style={{
-          fontFamily: 'Rajdhani, sans-serif',
-          fontSize: '13px',
-          color: 'rgba(255,255,255,0.2)',
-          fontStyle: 'italic',
-        }}
-        >
-          BYE
+      <div className="flex items-center gap-2 px-3 py-2">
+        <span className="font-racing text-[13px] italic" style={{ color: 'var(--text-muted)' }}>
+          {tbdLabel}
         </span>
       </div>
     )
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      padding: '8px 12px',
-      background: isWinner ? 'rgba(16,185,129,0.1)' : 'transparent',
-    }}
+    <div
+      className="flex items-center gap-2 px-3 py-2"
+      style={{ background: isWinner ? 'rgba(16,185,129,0.09)' : 'transparent' }}
     >
-      {isWinner && <span style={{ fontSize: '11px' }}>🏆</span>}
+      {isWinner && <span className="text-[11px]" aria-hidden="true">🏆</span>}
       {seed && (
-        <span style={{
-          fontFamily: 'JetBrains Mono, monospace',
-          fontSize: '10px',
-          color: 'rgba(0,245,255,0.5)',
-          minWidth: '18px',
-        }}
-        >
+        <span className="font-mono text-[10px]" style={{ color: 'rgba(0,245,255,0.5)', minWidth: 18 }}>
           {seed}
         </span>
       )}
-      <span style={{
-        fontFamily: 'Rajdhani, sans-serif',
-        fontSize: '13px',
-        fontWeight: isWinner ? 700 : 500,
-        color: isWinner ? '#10b981' : isForfeit ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.8)',
-        letterSpacing: '0.03em',
-        flex: 1,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-        textDecoration: isForfeit ? 'line-through' : 'none',
-      }}
+      <span
+        className="font-racing flex-1 overflow-hidden text-ellipsis whitespace-nowrap tracking-[0.03em]"
+        style={{
+          fontSize: 13,
+          fontWeight: isWinner ? 700 : 500,
+          color: isWinner ? '#10b981' : isForfeit ? 'var(--text-muted)' : 'var(--text-primary)',
+          textDecoration: isForfeit ? 'line-through' : 'none',
+        }}
       >
         {name}
       </span>
@@ -268,16 +251,17 @@ function PlayerSlot({ name, seed, isWinner, isForfeit }) {
 
 function statusColor(status) {
   switch (status) {
-    case 'completed': return 'rgba(16,185,129,0.6)'
+    case 'completed': return 'rgba(16,185,129,0.7)'
     case 'racing': return '#00f5ff'
     case 'ready': return '#10b981'
-    case 'waiting_players': return 'rgba(255,255,255,0.35)'
-    case 'upcoming': return 'rgba(245,158,11,0.6)'
-    case 'forfeit': return 'rgba(239,68,68,0.7)'
-    default: return 'rgba(255,255,255,0.3)'
+    case 'waiting_players': return 'var(--text-muted)'
+    case 'upcoming': return 'rgba(245,158,11,0.75)'
+    case 'forfeit': return 'rgba(239,68,68,0.8)'
+    default: return 'var(--text-muted)'
   }
 }
 
+/** Winner time, in the compact m:ss.SS form the bracket has always used. */
 function formatMs(ms) {
   if (!ms && ms !== 0) return null
   const totalSeconds = ms / 1000

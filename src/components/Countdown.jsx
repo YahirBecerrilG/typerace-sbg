@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
+import { useI18n } from '../i18n'
 
 const STEPS = [3, 2, 1, 'GO!']
 const STEP_COLORS = {
@@ -14,6 +15,8 @@ const STEP_COLORS = {
  * Calls onComplete when done.
  */
 export function Countdown({ onComplete }) {
+  const { t } = useI18n()
+  const motionSafe = !useReducedMotion()
   const [stepIndex, setStepIndex] = useState(0)
   const [visible, setVisible] = useState(true)
 
@@ -63,15 +66,15 @@ export function Countdown({ onComplete }) {
           <AnimatePresence mode="wait">
             <motion.div
               key={stepIndex}
-              initial={{ scale: 2, opacity: 0 }}
+              initial={motionSafe ? { scale: 2, opacity: 0 } : false}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.5, opacity: 0 }}
+              exit={motionSafe ? { scale: 0.5, opacity: 0 } : { opacity: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 20 }}
               style={{ textAlign: 'center' }}
             >
               <div
+                className="font-racing"
                 style={{
-                  fontFamily: 'Rajdhani, sans-serif',
                   fontSize: 'clamp(80px, 15vw, 140px)',
                   fontWeight: 900,
                   color,
@@ -83,8 +86,16 @@ export function Countdown({ onComplete }) {
                 {current}
               </div>
               {current !== 'GO!' && (
-                <div style={{ color: 'rgba(255,255,255,0.4)', fontFamily: 'Rajdhani', fontSize: '20px', marginTop: '8px', letterSpacing: '0.2em' }}>
-                  GET READY
+                <div
+                  className="font-racing"
+                  style={{
+                    color: 'var(--text-secondary)',
+                    fontSize: '20px',
+                    marginTop: '8px',
+                    letterSpacing: '0.2em',
+                  }}
+                >
+                  {t('race.getReady')}
                 </div>
               )}
             </motion.div>

@@ -31,26 +31,47 @@ export function AuthProvider({ children }) {
   }, [])
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id, session.user)
-      setLoading(false)
-    })
+    let active = true
 
-    // Listen for auth changes
+    // Resolve the REAL session before any private route is allowed to render.
+    // The catch is what matters for routing: if the session cannot be read we
+    // must end in a definite "no user" state, otherwise PrivateRoute would spin
+    // forever instead of redirecting to /login.
+    supabase.auth
+      .getSession()
+      .then(async ({ data: { session } }) => {
+        if (!active) return
+        setUser(session?.user ?? null)
+        if (session?.user) await fetchProfile(session.user.id, session.user)
+        if (active) setLoading(false)
+      })
+      .catch((err) => {
+        console.error('Could not read the Supabase session:', err)
+        if (!active) return
+        setUser(null)
+        setProfile(null)
+        setLoading(false)
+      })
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        if (!active) return
         setUser(session?.user ?? null)
         if (session?.user) {
           await fetchProfile(session.user.id, session.user)
         } else {
           setProfile(null)
         }
+        // Every auth transition (sign in, sign out, token refresh) settles the
+        // session, so the guard never stays stuck on the loading screen.
+        setLoading(false)
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
   }, [fetchProfile])
 
   const register = async ({ email, password, displayName }) => {

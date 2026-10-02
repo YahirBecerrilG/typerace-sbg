@@ -1,115 +1,123 @@
 import { motion } from 'framer-motion'
 import { Car } from './Car'
+import { useI18n } from '../i18n'
 
 const PLAYER_COLORS = [
-  { bg: 'rgba(0,245,255,0.08)', border: 'rgba(0,245,255,0.3)', text: '#00f5ff' },
-  { bg: 'rgba(139,92,246,0.08)', border: 'rgba(139,92,246,0.3)', text: '#8b5cf6' },
-  { bg: 'rgba(16,185,129,0.08)', border: 'rgba(16,185,129,0.3)', text: '#10b981' },
-  { bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.3)', text: '#f59e0b' },
-  { bg: 'rgba(236,72,153,0.08)', border: 'rgba(236,72,153,0.3)', text: '#ec4899' },
-  { bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.3)', text: '#f97316' },
-  { bg: 'rgba(6,182,212,0.08)', border: 'rgba(6,182,212,0.3)', text: '#06b6d4' },
-  { bg: 'rgba(168,85,247,0.08)', border: 'rgba(168,85,247,0.3)', text: '#a855f7' },
+  { text: '#00f5ff', fill: 'rgba(0,245,255,0.28)', glow: 'rgba(0,245,255,0.45)' },
+  { text: '#8b5cf6', fill: 'rgba(139,92,246,0.28)', glow: 'rgba(139,92,246,0.45)' },
+  { text: '#10b981', fill: 'rgba(16,185,129,0.28)', glow: 'rgba(16,185,129,0.45)' },
+  { text: '#f59e0b', fill: 'rgba(245,158,11,0.28)', glow: 'rgba(245,158,11,0.45)' },
+  { text: '#ec4899', fill: 'rgba(236,72,153,0.28)', glow: 'rgba(236,72,153,0.45)' },
+  { text: '#f97316', fill: 'rgba(249,115,22,0.28)', glow: 'rgba(249,115,22,0.45)' },
+  { text: '#06b6d4', fill: 'rgba(6,182,212,0.28)', glow: 'rgba(6,182,212,0.45)' },
+  { text: '#a855f7', fill: 'rgba(168,85,247,0.28)', glow: 'rgba(168,85,247,0.45)' },
 ]
 
 /**
  * A single race track lane showing a player's car and progress.
+ *
+ * Presentation only — same props, same maths. The car sits at 2%..88% so there
+ * is always room for the car itself at the finish line, and the nameplate lives
+ * outside the driving area so it can never overlap the car.
  */
 export function RaceTrack({ player, progress = 0, isCurrentPlayer = false, carState = 'idle', colorIndex = 0 }) {
+  const { t } = useI18n()
   const colors = PLAYER_COLORS[colorIndex % PLAYER_COLORS.length]
   const clampedProgress = Math.min(Math.max(progress, 0), 100)
-  // Car left position: 2% at start, up to ~90% at finish (reserve space for car width)
+  // Car left position: 2% at start, up to ~88% at finish (reserve space for car width)
   const carLeftPercent = 2 + (clampedProgress / 100) * 86
+
+  const name = player?.display_name || t('common.player')
+  const initial = name[0]?.toUpperCase()
 
   return (
     <div
-      className="track-lane relative"
+      className="track-lane"
       style={{
-        height: '68px',
-        marginBottom: '12px',
-        background: isCurrentPlayer
-          ? `linear-gradient(90deg, ${colors.bg} 0%, transparent 100%)`
-          : 'rgba(255,255,255,0.02)',
-        border: `1px solid ${isCurrentPlayer ? colors.border : 'rgba(255,255,255,0.06)'}`,
+        height: '92px',
+        marginBottom: '14px',
+        border: `1px solid ${isCurrentPlayer ? 'rgba(0,245,255,0.24)' : 'rgba(255,255,255,0.06)'}`,
+        boxShadow: isCurrentPlayer ? `0 0 34px -14px ${colors.glow}` : 'none',
       }}
     >
-      {/* Road dashes */}
-      <div className="track-dashes" />
+      {/* Road surface and travelled distance */}
+      <div className="track-road" />
+      <div
+        className="track-fill"
+        style={{
+          width: `${clampedProgress * 0.86}%`,
+          background: isCurrentPlayer
+            ? `linear-gradient(90deg, ${colors.fill}, ${colors.text})`
+            : 'linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.2))',
+          boxShadow: isCurrentPlayer ? `0 0 14px ${colors.glow}` : 'none',
+        }}
+        aria-hidden="true"
+      />
 
       {/* Start line */}
-      <div style={{
-        position: 'absolute',
-        left: '2%',
-        top: 0,
-        bottom: 0,
-        width: '2px',
-        background: 'rgba(255,255,255,0.15)',
-      }} />
+      <span
+        aria-hidden="true"
+        className="absolute inset-y-0"
+        style={{ left: '2%', width: '2px', background: 'rgba(255,255,255,0.16)' }}
+      />
 
       {/* Finish line (checkered) */}
-      <div style={{
-        position: 'absolute',
-        right: '2%',
-        top: 0,
-        bottom: 0,
-        width: '16px',
-        background: `repeating-linear-gradient(
-          45deg,
-          rgba(255,255,255,0.15) 0px,
-          rgba(255,255,255,0.15) 4px,
-          transparent 4px,
-          transparent 8px
-        )`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <span style={{ fontSize: '12px' }}>🏁</span>
+      <span
+        aria-hidden="true"
+        className="absolute inset-y-0 right-[2%] flex w-[16px] items-center justify-center"
+        style={{
+          background:
+            'repeating-linear-gradient(45deg, rgba(255,255,255,0.16) 0px, rgba(255,255,255,0.16) 4px, transparent 4px, transparent 8px)',
+        }}
+      >
+        <span style={{ fontSize: '13px' }}>🏁</span>
+      </span>
+
+      {/* Nameplate — left, outside the driving area. */}
+      <div
+        className="absolute top-1/2 flex -translate-y-1/2 items-center gap-2.5"
+        style={{ left: '5%' }}
+      >
+        <span
+          className="font-racing grid shrink-0 place-items-center rounded-full font-bold"
+          style={{
+            width: '32px',
+            height: '32px',
+            fontSize: '13px',
+            color: colors.text,
+            background: 'rgba(255,255,255,0.04)',
+            border: `1px solid ${isCurrentPlayer ? colors.glow : 'var(--border-glass)'}`,
+          }}
+          aria-hidden="true"
+        >
+          {initial}
+        </span>
+        <span
+          className="font-racing max-w-[160px] truncate text-[12px] font-bold uppercase"
+          style={{ color: colors.text, letterSpacing: '0.06em' }}
+          title={name}
+        >
+          {name}
+        </span>
       </div>
 
       {/* Car */}
       <motion.div
-        style={{
-          position: 'absolute',
-          left: `${carLeftPercent}%`,
-          top: '50%',
-          transform: 'translateY(-50%)',
-        }}
-        animate={{ left: `${carLeftPercent}%` }}
+        className="absolute top-1/2 -translate-y-1/2"
+        style={{ left: `calc(${carLeftPercent}% - 28px)` }}
+        animate={{ left: `calc(${carLeftPercent}% - 28px)` }}
         transition={{ type: 'spring', stiffness: 60, damping: 20 }}
       >
         <Car colorIndex={colorIndex} state={carState} size={56} />
       </motion.div>
 
-      {/* Player name */}
-      <div style={{
-        position: 'absolute',
-        right: '5%',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'flex-end',
-        gap: '2px',
-      }}>
-        <span style={{
-          fontSize: '11px',
-          fontWeight: 700,
-          color: colors.text,
-          fontFamily: 'Rajdhani, sans-serif',
-          letterSpacing: '0.05em',
-          textTransform: 'uppercase',
-        }}>
-          {player?.display_name || 'Player'}
-        </span>
-        <span style={{
-          fontSize: '10px',
-          color: 'rgba(255,255,255,0.4)',
-          fontFamily: 'JetBrains Mono, monospace',
-        }}>
-          {Math.round(clampedProgress)}%
-        </span>
-      </div>
+      {/* Live percentage */}
+      <span
+        className="num absolute top-1/2 -translate-y-1/2 text-[12px]"
+        style={{ right: '8%', color: 'var(--text-muted)' }}
+      >
+        {Math.round(clampedProgress)}%
+      </span>
     </div>
   )
 }

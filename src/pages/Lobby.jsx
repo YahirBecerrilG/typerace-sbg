@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
+import { Copy, Play, Users, Crown, Clock, Lock, LogOut, Dumbbell, ArrowRight } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { useTournamentRealtime } from '../hooks/useTournament'
 import { usePostgresChanges } from '../hooks/useRealtime'
@@ -11,16 +13,36 @@ import {
   reopenRegistration,
   leaveTournament,
 } from '../services/tournamentService'
-import { Copy, Play, Users, Crown, Clock, Lock, LogOut, Dumbbell } from 'lucide-react'
-import { TOURNAMENT_STATUS_LABEL } from '../utils/bracket'
-import toast from 'react-hot-toast'
+import { getTotalRounds } from '../utils/bracket'
+import { useI18n, useLabels } from '../i18n'
+import { AppShell } from '../components/ui/AppShell'
+import { Brand } from '../components/ui/Brand'
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher'
+import { LoadingScreen } from '../components/ui/LoadingScreen'
+import { Badge } from '../components/ui/Badge'
+import TournamentUnavailable from '../components/TournamentUnavailable'
 
 const PLAYER_COLORS = ['#00f5ff', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#f97316', '#06b6d4', '#a855f7']
 
+/**
+ * Lobby — the tournament control room.
+ *
+ * The screen is split into clearly separated zones instead of one stacked
+ * column: identity and shareable code at the top, then the host's control strip,
+ * then the competitive practice ranking as an e-sports table, then the roster,
+ * then the bracket path the tournament will run.
+ *
+ * All data, all handlers, all realtime wiring and every derived permission
+ * (isHost, canStart, registrationOpen, practiceRanking) are unchanged — only
+ * the arrangement and presentation are new.
+ */
 export default function Lobby() {
   const { tournamentId } = useParams()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { t } = useI18n()
+  const labels = useLabels()
+  const motionSafe = !useReducedMotion()
 
   const [tournament, setTournament] = useState(null)
   const [players, setPlayers] = useState([])
@@ -46,11 +68,14 @@ export default function Lobby() {
       } else {
         console.error('Lobby load error:', err)
         setLoadError(err)
-        toast.error(err.message || 'Failed to load lobby.')
+        toast.error(err.message || t('lobby.loadFailed'))
       }
     } finally {
       setLoading(false)
     }
+    // `t` is stable for a given locale; re-fetching on language switch is not
+    // desired, so it is intentionally not in the dependency list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tournamentId])
 
   useEffect(() => {
@@ -62,7 +87,7 @@ export default function Lobby() {
     tournamentId,
     onEvent: (event) => {
       if (event === 'TOURNAMENT_STARTED') {
-        toast.success('Tournament starting!', { icon: '🏁' })
+        toast.success(t('lobby.tournamentStarting'), { icon: '🏁' })
         navigate(`/tournament/${tournamentId}`)
       }
       if (event === 'PLAYER_JOINED') {
@@ -102,7 +127,7 @@ export default function Lobby() {
       await broadcast('TOURNAMENT_STARTED', { tournamentId })
       navigate(`/tournament/${tournamentId}`, { replace: true })
     } catch (err) {
-      toast.error(err.message || 'Failed to start tournament.')
+      toast.error(err.message || t('lobby.startFailed'))
     } finally {
       setStarting(false)
     }
@@ -112,7 +137,7 @@ export default function Lobby() {
     setBusy(true)
     try {
       await closeRegistration(tournamentId)
-      toast.success('Registration closed. No new players can join.')
+      toast.success(t('lobby.registrationClosedToast'))
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -124,7 +149,7 @@ export default function Lobby() {
     setBusy(true)
     try {
       await reopenRegistration(tournamentId)
-      toast.success('Registration reopened.')
+      toast.success(t('lobby.registrationReopenedToast'))
     } catch (err) {
       toast.error(err.message)
     } finally {
@@ -133,11 +158,11 @@ export default function Lobby() {
   }
 
   const handleLeave = async () => {
-    if (!window.confirm('Leave this tournament? Your matches will be forfeited.')) return
+    if (!window.confirm(t('lobby.leaveConfirm'))) return
     setBusy(true)
     try {
       await leaveTournament(tournamentId)
-      toast.success('You left the tournament.')
+      toast.success(t('lobby.left'))
       navigate('/dashboard', { replace: true })
     } catch (err) {
       toast.error(err.message)
@@ -149,36 +174,19 @@ export default function Lobby() {
   const copyCode = () => {
     if (!tournament?.code) return
     navigator.clipboard.writeText(tournament.code)
-    toast.success('Code copied!')
+    toast.success(t('common.copied'))
   }
 
   if (loading) {
-    return <LoadingScreen />
+    return (
+      <AppShell>
+        <LoadingScreen label={t('lobby.loading')} />
+      </AppShell>
+    )
   }
 
   if (!tournament) {
-    return (
-      <div style={{ minHeight: '100vh', background: '#080b14', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-        <div style={{ textAlign: 'center', maxWidth: '520px' }}>
-          <h1 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '28px', fontWeight: 800, color: 'white', marginBottom: '10px' }}>
-            {loadError ? 'Could not load tournament' : 'Tournament not found'}
-          </h1>
-          <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '14px', marginBottom: loadError ? '8px' : '24px' }}>
-            {loadError
-              ? loadError.message
-              : 'This tournament does not exist, or the link is no longer valid.'}
-          </p>
-          {loadError?.code && (
-            <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', color: '#ef4444', marginBottom: '24px' }}>
-              {loadError.code}
-            </p>
-          )}
-          <button className="btn-primary" onClick={() => navigate('/dashboard')} style={{ fontSize: '15px', padding: '14px 28px' }}>
-            Back to Dashboard
-          </button>
-        </div>
-      </div>
-    )
+    return <TournamentUnavailable error={loadError} />
   }
 
   const registrationOpen = ['lobby', 'practice'].includes(tournament.status)
@@ -196,417 +204,519 @@ export default function Lobby() {
       String(a.profiles?.display_name || '').localeCompare(String(b.profiles?.display_name || ''))
     )
 
+  // The bracket does not exist yet — the host builds it on start. Showing the
+  // round path is derived purely from the roster size, it is not match data.
+  const totalRounds = getTotalRounds(tournament.bracket_slots || tournament.max_players || 2)
+  const roundPath = Array.from({ length: totalRounds }, (_, i) => labels.roundName(i + 1, totalRounds))
+
   return (
-    <div style={{ minHeight: '100vh', background: '#080b14', position: 'relative' }}>
-      <div className="bg-grid" style={{ position: 'absolute', inset: 0, opacity: 0.3 }} />
+    <AppShell width="shell">
+      <header className="flex items-center justify-between py-5">
+        <Brand size="sm" />
+        <LanguageSwitcher />
+      </header>
 
-      <div style={{ position: 'relative', zIndex: 1, maxWidth: '800px', margin: '0 auto', padding: '40px 24px' }}>
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          style={{ marginBottom: '40px' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-            <div>
-              <div style={{
-                fontFamily: 'Rajdhani, sans-serif',
-                fontSize: '12px',
-                color: registrationOpen ? '#f59e0b' : 'rgba(255,255,255,0.4)',
-                fontWeight: 700,
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-                marginBottom: '6px',
-              }}>
-                ● {TOURNAMENT_STATUS_LABEL[tournament.status] || tournament.status}
-              </div>
-              <h1 style={{
-                fontFamily: 'Rajdhani, sans-serif',
-                fontSize: 'clamp(24px, 4vw, 40px)',
-                fontWeight: 900,
-                color: 'white',
-                lineHeight: 1,
-              }}>
-                {tournament.name}
-              </h1>
-              <div style={{ display: 'flex', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', textTransform: 'capitalize' }}>
-                  {tournament.difficulty} difficulty
-                </span>
-                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.3)' }}>•</span>
-                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)' }}>
-                  Max {tournament.max_players} players
-                </span>
-              </div>
+      <main className="pb-24">
+        {/* ═══ Identity + shareable code ══════════════════════════════════ */}
+        <section className="grid gap-8 pb-12 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10">
+          <motion.div
+            initial={motionSafe ? { opacity: 0, y: 18 } : false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <span className="eyebrow">{t('lobby.controlLabel')}</span>
+
+            <h1
+              className="display-l mt-5"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              {tournament.name}
+            </h1>
+
+            <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-3">
+              <Badge tone={registrationOpen ? 'warn' : 'accent'} dot>
+                {labels.tournamentStatus(tournament.status)}
+              </Badge>
+              <span className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
+                {t('lobby.difficultySuffix', { difficulty: labels.difficulty(tournament.difficulty) })}
+              </span>
+              <span style={{ color: 'var(--text-muted)' }}>•</span>
+              <span className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
+                {t('lobby.maxPlayers', { count: tournament.max_players })}
+              </span>
             </div>
 
-            {/* Code badge */}
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              onClick={copyCode}
-              style={{
-                background: 'rgba(0,245,255,0.06)',
-                border: '1px solid rgba(0,245,255,0.25)',
-                borderRadius: '12px',
-                padding: '14px 20px',
-                cursor: 'pointer',
-                textAlign: 'center',
-              }}
-            >
-              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', fontFamily: 'Inter', marginBottom: '4px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                Tournament Code
+            {/* Player count gets real visual weight: it is the number everyone
+                watches while waiting. */}
+            <div className="mt-9 flex items-end gap-8">
+              <div>
+                <span className="label-xs">{t('lobby.players')}</span>
+                <div className="metric-value metric-xl mt-3" style={{ color: 'var(--neon-cyan)' }}>
+                  {activePlayers.length}
+                  <span
+                    className="metric-value"
+                    style={{ fontSize: '0.4em', color: 'var(--text-muted)', marginLeft: 6 }}
+                  >
+                    / {tournament.max_players}
+                  </span>
+                </div>
               </div>
-              <div style={{
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: '24px',
-                fontWeight: 700,
-                color: '#00f5ff',
-                letterSpacing: '0.12em',
-              }}>
-                {tournament.code}
-              </div>
-              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.3)', marginTop: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
-                <Copy size={10} /> Click to copy
-              </div>
-            </motion.div>
-          </div>
-        </motion.div>
 
-        {/* Players count — participants only, the host is never counted */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          marginBottom: '20px',
-          flexWrap: 'wrap',
-        }}>
-          <Users size={16} style={{ color: 'rgba(255,255,255,0.4)' }} />
-          <span style={{
-            fontFamily: 'Rajdhani, sans-serif',
-            fontSize: '18px',
-            fontWeight: 700,
-            color: 'rgba(255,255,255,0.8)',
-          }}>
-            Players: <span style={{ color: '#00f5ff' }}>{activePlayers.length}</span> / {tournament.max_players}
-          </span>
-          {isHost && (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontSize: '12px', color: '#f59e0b' }}>
-              <Crown size={12} /> You are the host — you run this tournament, you do not compete in it
-            </span>
-          )}
-        </div>
-
-        {/* Practice entry: never affects matches, only the seeding order.
-            The host runs the tournament and never competes in it, so the
-            button is not offered and the host is absent from the ranking. */}
-        {!isHost && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
-            padding: '14px 18px', marginBottom: '24px',
-            background: 'rgba(0,245,255,0.05)',
-            border: '1px solid rgba(0,245,255,0.18)',
-            borderRadius: '10px',
-          }}>
-            <Dumbbell size={16} style={{ color: '#00f5ff' }} />
-            <div style={{ flex: 1, minWidth: '180px' }}>
-              <div style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '14px', fontWeight: 700, color: 'white' }}>
-                Qualifier practice
-              </div>
-              <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
-                Practice runs set your seed. They never count as matches.
-              </div>
-            </div>
-            <button
-              className="btn-secondary"
-              style={{ fontSize: '13px', padding: '10px 18px' }}
-              onClick={() => navigate(`/tournament/${tournamentId}/practice`)}
-            >
-              Practise
-            </button>
-          </div>
-        )}
-
-        {/* Practice ranking: players only, ordered by practice_score desc.
-            Realtime re-runs fetchData on every tournament_players update, so
-            the table moves as players run qualifiers. */}
-        {practiceRanking.length > 0 && (
-          <div style={{
-            marginBottom: '24px',
-            background: 'rgba(255,255,255,0.02)',
-            border: '1px solid rgba(255,255,255,0.07)',
-            borderRadius: '12px',
-            overflow: 'hidden',
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '12px 16px',
-              borderBottom: '1px solid rgba(255,255,255,0.07)',
-              fontFamily: 'Rajdhani, sans-serif', fontSize: '12px', fontWeight: 800,
-              letterSpacing: '0.14em', textTransform: 'uppercase',
-              color: 'rgba(255,255,255,0.5)',
-            }}>
-              <Dumbbell size={13} />
-              Practice ranking
               {isHost && (
-                <span style={{ marginLeft: 'auto', fontSize: '10px', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em' }}>
-                  Seeds the bracket
-                </span>
-              )}
-            </div>
-
-            {practiceRanking.map((p, idx) => (
-              <div
-                key={p.id}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '28px 1fr auto auto auto',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '10px 16px',
-                  borderBottom: idx === practiceRanking.length - 1 ? 'none' : '1px solid rgba(255,255,255,0.04)',
-                  background: p.user_id === user?.id ? 'rgba(0,245,255,0.06)' : 'transparent',
-                }}
-              >
-                <span style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '14px', fontWeight: 800, color: 'rgba(255,255,255,0.35)' }}>
-                  {idx + 1}
-                </span>
-                <span style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '15px', fontWeight: 700, color: 'white', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {p.profiles?.display_name || 'Player'}
-                </span>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '13px', color: '#00f5ff' }}>
-                  {Number(p.practice_score || 0).toFixed(1)}
-                </span>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', color: 'rgba(255,255,255,0.5)', minWidth: '70px', textAlign: 'right' }}>
-                  {Number(p.best_wpm || 0).toFixed(0)} WPM
-                </span>
-                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '12px', color: 'rgba(255,255,255,0.35)', minWidth: '48px', textAlign: 'right' }}>
-                  {p.practice_runs} run{p.practice_runs === 1 ? '' : 's'}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Players list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '32px' }}>
-          <AnimatePresence mode="popLayout">
-            {players.map((player, idx) => (
-              <PlayerCard
-                key={player.id}
-                player={player}
-                index={idx}
-                isCurrentUser={player.user_id === user?.id}
-                colorIndex={idx}
-              />
-            ))}
-          </AnimatePresence>
-
-          {/* Empty slots */}
-          {Array.from({ length: Math.max(0, tournament.max_players - players.length) }, (_, i) => (
-            <motion.div
-              key={`empty-${i}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              style={{
-                height: '60px',
-                border: '1px dashed rgba(255,255,255,0.1)',
-                borderRadius: '10px',
-                display: 'flex',
-                alignItems: 'center',
-                paddingLeft: '20px',
-                color: 'rgba(255,255,255,0.2)',
-                fontSize: '14px',
-                fontStyle: 'italic',
-              }}
-            >
-              Waiting for player...
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Host controls */}
-        {isHost && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {canShowStart && (
-              <>
-                {!canStart && (
-                  <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontSize: '13px' }}>
-                    {activePlayers.length < 2
-                      ? 'Need at least 2 players to start'
-                      : 'Ready when you are — everyone gets locked in.'}
-                  </p>
-                )}
-                <motion.button
-                  whileHover={canStart ? { scale: 1.02, y: -2 } : {}}
-                  whileTap={canStart ? { scale: 0.98 } : {}}
-                  className="btn-primary"
-                  disabled={!canStart || starting}
-                  onClick={handleStart}
+                <div
+                  className="mb-2 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px]"
                   style={{
-                    fontSize: '17px', padding: '16px', opacity: canStart ? 1 : 0.4,
-                    cursor: canStart ? 'pointer' : 'not-allowed',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                    background: 'rgba(245,158,11,0.09)',
+                    border: '1px solid rgba(245,158,11,0.28)',
+                    color: 'var(--neon-yellow)',
                   }}
                 >
-                  <Play size={20} />
-                  {starting ? 'Building bracket...' : 'Start Tournament'}
-                </motion.button>
-              </>
-            )}
+                  <Crown size={13} aria-hidden="true" />
+                  {t('lobby.hostNotice')}
+                </div>
+              )}
+            </div>
+          </motion.div>
 
-            {registrationOpen && (
-              <button
-                className="btn-secondary"
-                disabled={busy}
-                onClick={handleCloseRegistration}
-                style={{ fontSize: '13px', padding: '12px' }}
+          {/* Code panel — the single most-copied object in the app, so it is a
+              large, high-contrast, obviously clickable block. */}
+          <motion.button
+            type="button"
+            whileHover={motionSafe ? { y: -3 } : undefined}
+            onClick={copyCode}
+            aria-label={t('lobby.codeLabel')}
+            className="panel panel-accent relative overflow-hidden p-8 text-center"
+            style={{ cursor: 'pointer', borderColor: 'rgba(0,245,255,0.28)' }}
+          >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background: 'radial-gradient(300px 180px at 50% 0%, rgba(0,245,255,0.18), transparent 70%)',
+              }}
+            />
+            <div className="relative">
+              <div className="label-xs">{t('lobby.codeLabel')}</div>
+              <div
+                className="num neon-text-cyan mt-4 text-[42px] font-bold"
+                style={{ letterSpacing: '0.1em', lineHeight: 1 }}
               >
-                <Lock size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />
-                Close registration
-              </button>
-            )}
+                {tournament.code}
+              </div>
+              <div
+                className="mt-5 inline-flex items-center gap-2 text-[12px]"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                <Copy size={12} aria-hidden="true" />
+                {t('common.clickToCopy')}
+              </div>
+            </div>
+          </motion.button>
+        </section>
+
+        {/* ═══ Host control strip ═════════════════════════════════════════ */}
+        {isHost && (
+          <section className="panel panel-accent mb-12 overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-4 p-7 lg:p-8">
+              <div className="min-w-0">
+                <span className="label-xs">{t('lobby.hostControls')}</span>
+                <h2 className="display-s mt-3" style={{ color: 'var(--text-primary)' }}>
+                  {t('lobby.controlLabel')}
+                </h2>
+                <p className="mt-3 text-[13px]" style={{ color: 'var(--text-muted)' }}>
+                  {t('lobby.controlsHint')}
+                </p>
+                {!canStart && canShowStart && (
+                  <p className="mt-2 text-[13px]" style={{ color: 'var(--text-secondary)' }}>
+                    {activePlayers.length < 2 ? t('lobby.needTwo') : t('lobby.readyToStart')}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {canShowStart && (
+                  <motion.button
+                    whileHover={motionSafe && canStart ? { scale: 1.02, y: -2 } : undefined}
+                    whileTap={motionSafe && canStart ? { scale: 0.98 } : undefined}
+                    className="btn-primary btn-lg btn-cta"
+                    disabled={!canStart || starting}
+                    onClick={handleStart}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}
+                  >
+                    <Play size={18} aria-hidden="true" />
+                    {starting ? t('lobby.starting') : t('lobby.startTournament')}
+                  </motion.button>
+                )}
+
+                {registrationOpen && (
+                  <button className="btn-secondary" disabled={busy} onClick={handleCloseRegistration}>
+                    <Lock size={14} aria-hidden="true" style={{ marginRight: 7 }} />
+                    {t('lobby.closeRegistration')}
+                  </button>
+                )}
+
+                {!registrationOpen && tournament.status === 'registration_closed' && (
+                  <button className="btn-secondary" disabled={busy} onClick={handleReopen}>
+                    {t('lobby.reopenRegistration')}
+                  </button>
+                )}
+              </div>
+            </div>
 
             {!registrationOpen && canShowStart && (
-              <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '13px' }}>
-                Registration is closed. Roster locked with {activePlayers.length} player{activePlayers.length === 1 ? '' : 's'}.
-              </p>
-            )}
-
-            {!canShowStart && tournament.status === 'registration_closed' && (
-              <button
-                className="btn-secondary"
-                disabled={busy}
-                onClick={handleReopen}
-                style={{ fontSize: '13px', padding: '12px' }}
+              <div
+                className="px-7 py-4 text-[13px] lg:px-8"
+                style={{
+                  borderTop: '1px solid var(--border-glass)',
+                  background: 'rgba(255,255,255,0.02)',
+                  color: 'var(--text-secondary)',
+                }}
               >
-                Reopen registration
-              </button>
+                {activePlayers.length === 1
+                  ? t('lobby.registrationLocked', { count: activePlayers.length })
+                  : t('lobby.registrationLockedPlural', { count: activePlayers.length })}
+              </div>
             )}
-          </div>
+          </section>
         )}
 
-        {!isHost && (
-          <div style={{
-            textAlign: 'center', padding: '20px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid rgba(255,255,255,0.07)', borderRadius: '10px',
-            marginBottom: '16px',
-          }}>
-            <Clock size={18} style={{ color: 'rgba(255,255,255,0.3)', margin: '0 auto 8px', display: 'block' }} />
-            <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>
-              Waiting for the host to start the tournament...
-            </p>
-          </div>
+        {/* ═══ Practice ranking — competitive table ════════════════════════ */}
+        {practiceRanking.length > 0 && (
+          <section className="mb-12">
+            <div
+              className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b pb-4"
+              style={{ borderColor: 'var(--border-glass)' }}
+            >
+              <div>
+                <span className="eyebrow">{t('lobby.rankingTitle')}</span>
+                {isHost && (
+                  <p className="caption mt-2">{t('lobby.rankingSeeds')}</p>
+                )}
+              </div>
+              <Dumbbell size={18} style={{ color: 'var(--text-muted)' }} aria-hidden="true" />
+            </div>
+
+            <div className="panel overflow-hidden">
+              <div className="rank-scroll">
+                <table className="rank-table">
+                  <thead>
+                    <tr>
+                      <th scope="col" style={{ width: 62 }}>{t('lobby.colRank')}</th>
+                      <th scope="col">{t('lobby.colPlayer')}</th>
+                      <th scope="col" className="col-num">{t('lobby.colScore')}</th>
+                      <th scope="col" className="col-num">{t('lobby.colBest')}</th>
+                      <th scope="col" className="col-num">{t('lobby.colRuns')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {practiceRanking.map((p, idx) => (
+                      <tr key={p.id} data-me={p.user_id === user?.id}>
+                        <td>
+                          <span
+                            className="medal"
+                            style={{
+                              background: rankTint(idx),
+                              border: `1px solid ${rankBorder(idx)}`,
+                              color: rankBorder(idx),
+                            }}
+                          >
+                            {idx + 1}
+                          </span>
+                        </td>
+                        <td>
+                          <span
+                            className="font-racing text-[15px] font-bold"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
+                            {p.profiles?.display_name || t('common.player')}
+                          </span>
+                          {p.user_id === user?.id && (
+                            <span
+                              className="ml-3 text-[10px] font-bold uppercase"
+                              style={{ color: 'var(--neon-cyan)', letterSpacing: '0.14em' }}
+                            >
+                              {t('common.youShort')}
+                            </span>
+                          )}
+                        </td>
+                        <td className="col-num" style={{ color: 'var(--neon-cyan)', fontWeight: 700 }}>
+                          {Number(p.practice_score || 0).toFixed(1)}
+                        </td>
+                        <td className="col-num" style={{ color: 'var(--text-secondary)' }}>
+                          {Number(p.best_wpm || 0).toFixed(0)} {t('unit.wpm')}
+                        </td>
+                        <td className="col-num" style={{ color: 'var(--text-muted)' }}>
+                          {p.practice_runs}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
         )}
 
-        {/* Leave (host cannot) */}
-        {!isHost && (
-          <button
-            className="btn-secondary"
-            disabled={busy}
-            onClick={handleLeave}
-            style={{ width: '100%', fontSize: '13px', padding: '12px' }}
-          >
-            <LogOut size={13} style={{ marginRight: '6px', verticalAlign: '-2px' }} />
-            Leave tournament
-          </button>
-        )}
-      </div>
-    </div>
+        {/* ═══ Roster + practice entry ════════════════════════════════════ */}
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,0.75fr)] lg:gap-12">
+          <section>
+            <div
+              className="mb-5 flex items-end justify-between gap-3 border-b pb-4"
+              style={{ borderColor: 'var(--border-glass)' }}
+            >
+              <div>
+                <span className="eyebrow">{t('lobby.rosterTitle')}</span>
+                <p className="caption mt-2">{t('lobby.rosterHint')}</p>
+              </div>
+              <span className="flex items-center gap-2 text-[13px]" style={{ color: 'var(--text-secondary)' }}>
+                <Users size={15} style={{ color: 'var(--text-muted)' }} aria-hidden="true" />
+                <span className="num" style={{ color: 'var(--neon-cyan)' }}>{activePlayers.length}</span>
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-2.5">
+              <AnimatePresence mode="popLayout">
+                {players.map((player, idx) => (
+                  <PlayerCard
+                    key={player.id}
+                    player={player}
+                    index={idx}
+                    isCurrentUser={player.user_id === user?.id}
+                    colorIndex={idx}
+                    motionSafe={motionSafe}
+                  />
+                ))}
+              </AnimatePresence>
+
+              {/* Empty slots */}
+              {Array.from({ length: Math.max(0, tournament.max_players - players.length) }, (_, i) => (
+                <motion.div
+                  key={`empty-${i}`}
+                  initial={motionSafe ? { opacity: 0 } : false}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center px-5 italic"
+                  style={{
+                    height: '60px',
+                    border: '1px dashed var(--border-subtle)',
+                    borderRadius: 'var(--radius-md)',
+                    color: 'var(--text-muted)',
+                    fontSize: '14px',
+                  }}
+                >
+                  {t('lobby.waitingSlot')}
+                </motion.div>
+              ))}
+            </div>
+          </section>
+
+          {/* Sidebar: practice entry and the bracket path. */}
+          <aside className="flex flex-col gap-5">
+            {!isHost && (
+              <div className="panel panel-accent relative overflow-hidden p-7">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0"
+                  style={{
+                    background: 'radial-gradient(300px 200px at 100% 0%, rgba(0,245,255,0.16), transparent 70%)',
+                  }}
+                />
+                <div className="relative">
+                  <span
+                    className="grid h-11 w-11 place-items-center"
+                    style={{
+                      borderRadius: 'var(--radius-md)',
+                      background: 'rgba(0,245,255,0.1)',
+                      border: '1px solid rgba(0,245,255,0.26)',
+                      color: 'var(--neon-cyan)',
+                    }}
+                    aria-hidden="true"
+                  >
+                    <Dumbbell size={19} />
+                  </span>
+
+                  <h3 className="display-s mt-5" style={{ color: 'var(--text-primary)' }}>
+                    {t('lobby.practiceTitle')}
+                  </h3>
+                  <p className="body-copy mt-3">{t('lobby.practiceDesc')}</p>
+
+                  <button
+                    className="btn-secondary btn-block mt-6"
+                    style={{ justifyContent: 'center' }}
+                    onClick={() => navigate(`/tournament/${tournamentId}/practice`)}
+                  >
+                    {t('lobby.practise')}
+                    <ArrowRight size={14} aria-hidden="true" style={{ marginLeft: 8 }} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Bracket path: the rounds this roster will run, derived from the
+                slot count. Nothing here is match data. */}
+            <div className="panel p-7">
+              <span className="label-xs">{t('lobby.bracketPathTitle')}</span>
+              <p className="caption mt-3">{t('lobby.bracketPathDesc')}</p>
+
+              <div className="mt-6 flex flex-col gap-2">
+                {roundPath.map((name, i) => {
+                  const isFinal = i === roundPath.length - 1
+                  return (
+                    <div
+                      key={`${name}-${i}`}
+                      className="flex items-center gap-3 px-3.5 py-2.5"
+                      style={{
+                        borderRadius: 'var(--radius-sm)',
+                        background: isFinal ? 'rgba(245,158,11,0.08)' : 'var(--bg-inset)',
+                        border: `1px solid ${isFinal ? 'rgba(245,158,11,0.24)' : 'var(--border-glass)'}`,
+                      }}
+                    >
+                      <span
+                        className="num shrink-0 text-[11px]"
+                        style={{ color: 'var(--text-muted)', minWidth: 22 }}
+                      >
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <span
+                        className="font-racing text-[13px] font-bold uppercase"
+                        style={{
+                          color: isFinal ? 'var(--neon-yellow)' : 'var(--text-secondary)',
+                          letterSpacing: '0.08em',
+                        }}
+                      >
+                        {name}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {!isHost && (
+              <>
+                <div
+                  className="flex flex-col items-center px-5 py-7 text-center"
+                  style={{
+                    background: 'var(--bg-inset)',
+                    border: '1px solid var(--border-glass)',
+                    borderRadius: 'var(--radius-lg)',
+                  }}
+                >
+                  <Clock size={18} style={{ color: 'var(--text-muted)', marginBottom: 9 }} aria-hidden="true" />
+                  <p className="text-[14px]" style={{ color: 'var(--text-secondary)' }}>
+                    {t('lobby.waitingForHost')}
+                  </p>
+                </div>
+
+                <button className="btn-ghost btn-block" disabled={busy} onClick={handleLeave}>
+                  <LogOut size={14} aria-hidden="true" style={{ marginRight: 7 }} />
+                  {t('lobby.leave')}
+                </button>
+              </>
+            )}
+          </aside>
+        </div>
+      </main>
+    </AppShell>
   )
 }
 
-function PlayerCard({ player, index, isCurrentUser, colorIndex }) {
+/** Top-three rank medallions get podium tints; everyone else stays neutral. */
+function rankTint(idx) {
+  if (idx === 0) return 'rgba(245,158,11,0.14)'
+  if (idx === 1) return 'rgba(203,213,225,0.12)'
+  if (idx === 2) return 'rgba(180,83,9,0.14)'
+  return 'rgba(255,255,255,0.03)'
+}
+
+function rankBorder(idx) {
+  if (idx === 0) return 'rgba(245,158,11,0.5)'
+  if (idx === 1) return 'rgba(203,213,225,0.45)'
+  if (idx === 2) return 'rgba(180,83,9,0.5)'
+  return 'var(--border-glass)'
+}
+
+function PlayerCard({ player, index, isCurrentUser, colorIndex, motionSafe }) {
+  const { t } = useI18n()
   const color = PLAYER_COLORS[colorIndex % PLAYER_COLORS.length]
-  const name = player.profiles?.display_name || 'Player'
+  const name = player.profiles?.display_name || t('common.player')
   const withdrawn = player.status === 'withdrawn'
+
+  const stats =
+    player.practice_runs === 1
+      ? t('lobby.practiceRunStats', {
+          runs: player.practice_runs,
+          wpm: Number(player.best_wpm || 0).toFixed(0),
+          score: Number(player.practice_score || 0).toFixed(1),
+        })
+      : t('lobby.practiceRunStatsPlural', {
+          runs: player.practice_runs,
+          wpm: Number(player.best_wpm || 0).toFixed(0),
+          score: Number(player.practice_score || 0).toFixed(1),
+        })
 
   return (
     <motion.div
-      initial={{ opacity: 0, x: -20 }}
+      initial={motionSafe ? { opacity: 0, x: -16 } : false}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 20 }}
-      transition={{ delay: index * 0.05 }}
+      exit={{ opacity: 0, x: 16 }}
+      transition={{ delay: Math.min(index, 8) * 0.05 }}
+      className="flex items-center gap-4 px-5 py-4"
       style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '14px',
-        padding: '14px 20px',
-        background: isCurrentUser ? `${color}0a` : 'rgba(255,255,255,0.03)',
-        border: `1px solid ${isCurrentUser ? `${color}33` : 'rgba(255,255,255,0.07)'}`,
-        borderRadius: '10px',
-        opacity: withdrawn ? 0.5 : 1,
+        background: isCurrentUser ? `${color}0f` : 'var(--bg-inset)',
+        border: `1px solid ${isCurrentUser ? `${color}3d` : 'var(--border-glass)'}`,
+        borderRadius: 'var(--radius-md)',
+        opacity: withdrawn ? 0.55 : 1,
       }}
     >
-      {/* Avatar circle */}
-      <div style={{
-        width: '38px', height: '38px', borderRadius: '50%',
-        background: `${color}20`, border: `2px solid ${color}55`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontFamily: 'Rajdhani, sans-serif', fontWeight: 700, fontSize: '16px',
-        color, flexShrink: 0,
-      }}>
-        {name[0]?.toUpperCase()}
-      </div>
+      {/* Seed number, in the competition's voice. */}
+      <span
+        className="num shrink-0 text-center text-[11px]"
+        style={{ color: 'var(--text-muted)', minWidth: 22 }}
+        aria-hidden="true"
+      >
+        {String(index + 1).padStart(2, '0')}
+      </span>
 
-      <div style={{ flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{
-            fontFamily: 'Rajdhani, sans-serif', fontSize: '16px', fontWeight: 700,
-            color: isCurrentUser ? color : 'rgba(255,255,255,0.85)',
-          }}>
+      {/* Avatar circle */}
+      <span
+        className="font-racing grid shrink-0 place-items-center rounded-full font-bold"
+        style={{
+          width: '42px',
+          height: '42px',
+          background: `${color}20`,
+          border: `2px solid ${color}55`,
+          fontSize: '17px',
+          color,
+        }}
+        aria-hidden="true"
+      >
+        {name[0]?.toUpperCase()}
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className="font-racing overflow-hidden text-ellipsis whitespace-nowrap text-[17px] font-bold"
+            style={{ color: isCurrentUser ? color : 'var(--text-primary)' }}
+          >
             {name}
           </span>
-          {isCurrentUser && (
-            <span style={{ ...badge(color, `${color}15`, `${color}33`), marginLeft: 0 }}>You</span>
-          )}
+          {isCurrentUser && <Badge tone="info">{t('common.you')}</Badge>}
         </div>
 
         {player.practice_runs > 0 && (
-          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', marginTop: '3px', fontFamily: 'Rajdhani, sans-serif', fontWeight: 600 }}>
-            {player.practice_runs} practice run{player.practice_runs === 1 ? '' : 's'} · best {Number(player.best_wpm).toFixed(0)} WPM · score {Number(player.practice_score).toFixed(1)}
+          <div
+            className="font-racing mt-1.5 text-[11.5px] font-semibold"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            {stats}
           </div>
         )}
       </div>
 
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: '6px',
-        color: withdrawn ? 'rgba(255,255,255,0.3)' : '#10b981',
-        fontSize: '12px', fontFamily: 'Rajdhani, sans-serif', fontWeight: 700,
-        letterSpacing: '0.08em', textTransform: 'uppercase',
-      }}>
-        {!withdrawn && (
-          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px rgba(16,185,129,0.6)' }} />
-        )}
-        {withdrawn ? 'Withdrawn' : 'In'}
-      </div>
+      <Badge tone={withdrawn ? 'neutral' : 'ok'} dot>
+        {withdrawn ? t('lobby.playerWithdrawn') : t('lobby.playerIn')}
+      </Badge>
     </motion.div>
-  )
-}
-
-const badge = (color, bg, border) => ({
-  display: 'inline-flex', alignItems: 'center', gap: '4px',
-  fontSize: '11px', color, background: bg, padding: '2px 8px',
-  borderRadius: '999px', border: `1px solid ${border}`,
-  fontFamily: 'Rajdhani, sans-serif', fontWeight: 700,
-})
-
-function LoadingScreen() {
-  return (
-    <div style={{ minHeight: '100vh', background: '#080b14', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center' }}>
-        <div style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '50%',
-          border: '3px solid rgba(0,245,255,0.2)',
-          borderTopColor: '#00f5ff',
-          animation: 'spin 0.8s linear infinite',
-          margin: '0 auto 16px',
-        }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>Loading lobby...</p>
-      </div>
-    </div>
   )
 }

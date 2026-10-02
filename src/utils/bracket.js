@@ -7,6 +7,9 @@
  *
  * The server is authoritative: it builds the real bracket inside
  * start_tournament(). This module is used for display and for tests.
+ *
+ * Presentation strings (placement labels, round names, status captions) live in
+ * src/i18n — this file is maths and phase predicates only.
  */
 
 // ─── Slot maths ──────────────────────────────────────────────────────────────
@@ -134,49 +137,7 @@ export function placementFor(totalRounds, roundNumber) {
   return Math.pow(2, Math.max(totalRounds - roundNumber, 0)) + 1
 }
 
-export function placementLabel(placement) {
-  if (!placement) return null
-  if (placement === 1) return 'Champion'
-  if (placement === 2) return '2nd Place'
-  if (placement === 3) return '3rd Place'
-  if (placement === 4) return '4th Place'
-  return `${placement}th Place`
-}
-
-// ─── Match status presentation ───────────────────────────────────────────────
-
-export const MATCH_STATUS_LABEL = {
-  upcoming: 'UPCOMING',
-  waiting_players: 'WAITING',
-  ready: 'READY',
-  racing: 'RACING',
-  completed: 'COMPLETED',
-  bye: 'BYE — ADVANCES',
-  forfeit: 'FORFEIT',
-}
-
-export const TOURNAMENT_STATUS_LABEL = {
-  lobby: 'Open for signups',
-  practice: 'Practice',
-  registration_closed: 'Registration closed',
-  bracket_ready: 'Bracket ready',
-  round_active: 'In progress',
-  completed: 'Completed',
-}
-
-export function getRoundName(roundNumber, totalRounds) {
-  const fromEnd = totalRounds - roundNumber + 1
-  switch (fromEnd) {
-    case 1: return 'Final'
-    case 2: return 'Semifinals'
-    case 3: return 'Quarterfinals'
-    case 4: return 'Round of 16'
-    case 5: return 'Round of 32'
-    default: return `Round ${roundNumber}`
-  }
-}
-
-export const getRoundNameByTotal = getRoundName
+// ─── Tournament phase ─────────────────────────────────────────────────────────
 
 /** True when the tournament still accepts new participants. */
 export function isRegistrationOpen(tournament) {

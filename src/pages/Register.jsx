@@ -1,23 +1,30 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { useId, useState } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { validateEmail, validatePassword, validateDisplayName } from '../utils/validation'
-import toast from 'react-hot-toast'
+import { useI18n } from '../i18n'
+import { AppShell } from '../components/ui/AppShell'
+import { Brand } from '../components/ui/Brand'
+import { LanguageSwitcher } from '../components/ui/LanguageSwitcher'
+import { Footer } from '../components/ui/Footer'
 
 export default function Register() {
   const { register } = useAuth()
   const navigate = useNavigate()
+  const { t } = useI18n()
+  const motionSafe = !useReducedMotion()
   const [form, setForm] = useState({ displayName: '', email: '', password: '' })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
 
   const validate = () => {
     const e = {}
-    const dnErr = validateDisplayName(form.displayName)
+    const dnErr = validateDisplayName(form.displayName, t)
     if (dnErr) e.displayName = dnErr
-    if (!validateEmail(form.email)) e.email = 'Enter a valid email address.'
-    const pwErr = validatePassword(form.password)
+    if (!validateEmail(form.email)) e.email = t('validation.emailInvalid')
+    const pwErr = validatePassword(form.password, t)
     if (pwErr) e.password = pwErr
     return e
   }
@@ -30,56 +37,59 @@ export default function Register() {
     setLoading(true)
     try {
       await register({ email: form.email, password: form.password, displayName: form.displayName.trim() })
-      toast.success('Account created! Welcome to TypeRacing.')
+      toast.success(t('auth.accountCreated'))
       navigate('/dashboard')
     } catch (err) {
-      toast.error(err.message || 'Registration failed.')
+      toast.error(err.message || t('auth.registrationFailed'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <AuthLayout title="Create Account" subtitle="Join the race. Sign up to compete.">
+    <AuthLayout title={t('auth.registerTitle')} subtitle={t('auth.registerSubtitle')}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <Field
-          label="Display Name"
+          label={t('auth.displayName')}
           value={form.displayName}
           onChange={(v) => setForm((f) => ({ ...f, displayName: v }))}
-          placeholder="RacerX"
+          placeholder={t('auth.displayNamePlaceholder')}
           error={errors.displayName}
           autoFocus
         />
         <Field
-          label="Email"
+          label={t('auth.email')}
           type="email"
           value={form.email}
           onChange={(v) => setForm((f) => ({ ...f, email: v }))}
-          placeholder="you@email.com"
+          placeholder={t('auth.emailPlaceholder')}
           error={errors.email}
         />
         <Field
-          label="Password"
+          label={t('auth.password')}
           type="password"
           value={form.password}
           onChange={(v) => setForm((f) => ({ ...f, password: v }))}
-          placeholder="••••••••"
+          placeholder={t('auth.passwordPlaceholder')}
           error={errors.password}
         />
         <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={motionSafe && !loading ? { scale: 1.02 } : undefined}
+          whileTap={motionSafe && !loading ? { scale: 0.98 } : undefined}
           type="submit"
-          className="btn-primary"
+          className="btn-primary btn-block"
           disabled={loading}
-          style={{ marginTop: '8px', fontSize: '15px', padding: '14px', opacity: loading ? 0.7 : 1 }}
+          style={{ marginTop: '8px', fontSize: '15px', padding: '14px' }}
         >
-          {loading ? 'Creating Account...' : 'Create Account'}
+          {loading ? t('auth.creatingAccount') : t('auth.createAccount')}
         </motion.button>
-        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>
-          Already have an account?{' '}
-          <Link to="/login" style={{ color: '#00f5ff', textDecoration: 'none', fontWeight: 600 }}>
-            Sign In
+        <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+          {t('auth.hasAccount')}{' '}
+          <Link
+            to="/login"
+            style={{ color: 'var(--neon-cyan)', textDecoration: 'none', fontWeight: 600 }}
+          >
+            {t('auth.signIn')}
           </Link>
         </p>
       </form>
@@ -90,91 +100,62 @@ export default function Register() {
 // ─── Shared Auth Layout ──────────────────────────────────────────────────────
 export function AuthLayout({ title, subtitle, children }) {
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#080b14',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px',
-      position: 'relative',
-    }}>
-      <div className="bg-grid" style={{ position: 'absolute', inset: 0, opacity: 0.3 }} />
-      <div style={{
-        position: 'absolute',
-        top: '20%',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: '500px',
-        height: '500px',
-        background: 'radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)',
-        pointerEvents: 'none',
-      }} />
+    <AppShell width="panel">
+      <header className="flex items-center justify-between py-6">
+        <Brand size="sm" />
+        <LanguageSwitcher />
+      </header>
 
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="glass-card"
-        style={{ width: '100%', maxWidth: '440px', padding: '40px', position: 'relative', zIndex: 1 }}
-      >
-        <Link to="/" style={{ textDecoration: 'none' }}>
-          <div style={{
-            fontFamily: 'Rajdhani, sans-serif',
-            fontSize: '22px',
-            fontWeight: 900,
-            marginBottom: '32px',
-          }}
-            className="gradient-text"
+      <main className="flex min-h-[70vh] items-center justify-center py-6">
+        <motion.div
+          initial={undefined}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          className="glass-card hairline-top w-full"
+          style={{ padding: 'clamp(26px, 5vw, 40px)' }}
+        >
+          <h1
+            className="font-racing font-extrabold tracking-tight"
+            style={{ fontSize: 'clamp(26px, 5vw, 32px)', color: 'var(--text-primary)', marginBottom: '6px' }}
           >
-            TYPERACER
-          </div>
-        </Link>
-        <h1 style={{
-          fontFamily: 'Rajdhani, sans-serif',
-          fontSize: '32px',
-          fontWeight: 800,
-          color: 'white',
-          marginBottom: '6px',
-        }}>
-          {title}
-        </h1>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', marginBottom: '32px' }}>
-          {subtitle}
-        </p>
-        {children}
-      </motion.div>
-    </div>
+            {title}
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '30px' }}>
+            {subtitle}
+          </p>
+          {children}
+        </motion.div>
+      </main>
+
+      <Footer />
+    </AppShell>
   )
 }
 
 // ─── Reusable Field ──────────────────────────────────────────────────────────
 export function Field({ label, type = 'text', value, onChange, placeholder, error, autoFocus }) {
+  // Generated rather than derived from `label`: labels are translated, so a
+  // label-derived id would change on every language switch.
+  const id = useId()
+
   return (
     <div>
-      <label style={{
-        display: 'block',
-        fontSize: '13px',
-        fontWeight: 600,
-        color: 'rgba(255,255,255,0.6)',
-        marginBottom: '8px',
-        letterSpacing: '0.05em',
-        textTransform: 'uppercase',
-        fontFamily: 'Inter, sans-serif',
-      }}>
+      <label className="field-label" htmlFor={id}>
         {label}
       </label>
       <input
+        id={id}
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         autoFocus={autoFocus}
         className="input-field"
-        style={error ? { borderColor: '#ef4444', boxShadow: '0 0 0 3px rgba(239,68,68,0.1)' } : {}}
+        aria-invalid={error ? 'true' : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
       />
       {error && (
-        <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '6px', fontFamily: 'Inter, sans-serif' }}>
+        <p id={`${id}-error`} className="field-error" role="alert">
           {error}
         </p>
       )}

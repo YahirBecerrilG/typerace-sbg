@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Secrets / environment. Only VITE_* public keys belong here, but the file
+# itself should never be committed: keep the real values out of git history.
+.env
+.env.*
+!.env.example
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

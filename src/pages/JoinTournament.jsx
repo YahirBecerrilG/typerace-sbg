@@ -1,121 +1,97 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { joinTournament } from '../services/tournamentService'
 import { Hash } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { joinTournament } from '../services/tournamentService'
+import { useI18n } from '../i18n'
+import { FormLayout } from '../components/ui/FormLayout'
 
 export default function JoinTournament() {
   const navigate = useNavigate()
+  const { t } = useI18n()
+  const motionSafe = !useReducedMotion()
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
   const handleJoin = async (e) => {
     e.preventDefault()
-    if (!code.trim()) { setError('Enter a tournament code.'); return }
+    if (!code.trim()) { setError(t('join.codeRequired')); return }
     setError('')
     setLoading(true)
     try {
       // The server refuses the join once registration is closed, and decides
       // whether this was a new join or an existing membership.
       const result = await joinTournament({ code: code.trim() })
-      toast.success(result?.already_joined ? 'You are already in this tournament.' : 'Joined!')
+      toast.success(result?.already_joined ? t('join.alreadyJoined') : t('join.success'))
       navigate(`/lobby/${result.tournament_id}`)
     } catch (err) {
-      setError(err.message || 'Failed to join tournament.')
+      // Server messages stay verbatim; only the client-side fallback is local.
+      setError(err.message || t('join.failed'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#080b14',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px',
-      position: 'relative',
-    }}>
-      <div className="bg-grid" style={{ position: 'absolute', inset: 0, opacity: 0.3 }} />
-
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-card"
-        style={{ padding: '48px', width: '100%', maxWidth: '440px', position: 'relative', zIndex: 1 }}
+    <FormLayout title={t('join.title')} subtitle={t('join.subtitle')}>
+      <span
+        className="mb-8 grid h-14 w-14 place-items-center rounded-2xl"
+        style={{
+          background: 'rgba(139,92,246,0.12)',
+          border: '1px solid var(--border-violet)',
+          color: 'var(--violet)',
+        }}
+        aria-hidden="true"
       >
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{
-            width: '60px',
-            height: '60px',
-            borderRadius: '16px',
-            background: 'rgba(139,92,246,0.15)',
-            border: '1px solid rgba(139,92,246,0.3)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 16px',
-            color: '#8b5cf6',
-          }}>
-            <Hash size={28} />
-          </div>
-          <h1 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '8px' }}>
-            Join Tournament
-          </h1>
-          <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>
-            Enter the code shared by the tournament host.
-          </p>
+        <Hash size={26} />
+      </span>
+
+      <form onSubmit={handleJoin} className="flex flex-col gap-5">
+        <div>
+          <label className="sr-only" htmlFor="tournament-code">
+            {t('shareCode.copyLabel')}
+          </label>
+          <input
+            id="tournament-code"
+            className="input-field font-mono"
+            value={code}
+            onChange={(e) => setCode(e.target.value.toUpperCase())}
+            placeholder={t('join.placeholder')}
+            maxLength={7}
+            autoFocus
+            aria-invalid={error ? 'true' : undefined}
+            style={{
+              textAlign: 'center',
+              fontSize: '24px',
+              fontWeight: 700,
+              letterSpacing: '0.15em',
+              padding: '20px',
+            }}
+          />
+          {error && (
+            <p className="field-error text-center" role="alert">
+              {error}
+            </p>
+          )}
         </div>
 
-        <form onSubmit={handleJoin} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <input
-              className="input-field"
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="TR-XXXX"
-              maxLength={7}
-              autoFocus
-              style={{
-                textAlign: 'center',
-                fontFamily: 'JetBrains Mono, monospace',
-                fontSize: '24px',
-                fontWeight: 700,
-                letterSpacing: '0.15em',
-                padding: '20px',
-                ...(error ? { borderColor: '#ef4444' } : {}),
-              }}
-            />
-            {error && (
-              <p style={{ color: '#ef4444', fontSize: '13px', marginTop: '8px', textAlign: 'center' }}>
-                {error}
-              </p>
-            )}
-          </div>
+        <motion.button
+          whileHover={motionSafe && !loading ? { scale: 1.02 } : undefined}
+          whileTap={motionSafe && !loading ? { scale: 0.98 } : undefined}
+          type="submit"
+          className="btn-primary btn-block"
+          disabled={loading}
+          style={{ fontSize: '15px', padding: '14px' }}
+        >
+          {loading ? t('join.submitting') : t('join.submit')}
+        </motion.button>
 
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            type="submit"
-            className="btn-primary"
-            disabled={loading}
-            style={{ fontSize: '15px', padding: '14px', opacity: loading ? 0.7 : 1 }}
-          >
-            {loading ? 'Joining...' : 'Join Tournament'}
-          </motion.button>
-
-          <button
-            type="button"
-            className="btn-ghost"
-            onClick={() => navigate('/dashboard')}
-          >
-            Back to Dashboard
-          </button>
-        </form>
-      </motion.div>
-    </div>
+        <button type="button" className="btn-ghost btn-block" onClick={() => navigate('/dashboard')}>
+          {t('common.backToDashboard')}
+        </button>
+      </form>
+    </FormLayout>
   )
 }

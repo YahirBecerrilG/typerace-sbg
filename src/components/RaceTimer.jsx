@@ -3,6 +3,9 @@ import { formatTime } from '../utils/typing'
 
 /**
  * Live race timer that counts up from when raceStarted becomes true.
+ *
+ * JetBrains Mono is contractual here — the running clock is a measured value,
+ * not a label, so it stays on the same monospace face as the typing text.
  */
 export function RaceTimer({ raceStarted = false, stopped = false, finalMs = null }) {
   const [elapsed, setElapsed] = useState(0)
@@ -33,11 +36,12 @@ export function RaceTimer({ raceStarted = false, stopped = false, finalMs = null
       fontFamily: 'JetBrains Mono, monospace',
       fontSize: '22px',
       fontWeight: 700,
-      color: raceStarted ? '#00f5ff' : 'rgba(255,255,255,0.3)',
+      color: raceStarted ? 'var(--neon-cyan)' : 'var(--text-muted)',
       letterSpacing: '0.05em',
       textShadow: raceStarted ? '0 0 15px rgba(0,245,255,0.5)' : 'none',
       minWidth: '110px',
       textAlign: 'center',
+      fontVariantNumeric: 'tabular-nums',
     }}>
       {display}
     </div>

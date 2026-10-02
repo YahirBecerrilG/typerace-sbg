@@ -1,13 +1,31 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Link, useNavigate } from 'react-router-dom'
+import { motion, useReducedMotion } from 'framer-motion'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 import { useAuth } from '../hooks/useAuth'
 import { AuthLayout, Field } from './Register'
-import toast from 'react-hot-toast'
+import { useI18n } from '../i18n'
+
+/**
+ * Only same-origin in-app paths are honoured as a post-login destination.
+ *
+ * `PrivateRoute` stores the attempted location in router state, but that value
+ * must never be trusted as an arbitrary redirect target: accepting an absolute
+ * URL here would turn the login page into an open redirect.
+ */
+function safeRedirect(target) {
+  if (typeof target !== 'string' || !target.startsWith('/')) return '/dashboard'
+  // Reject protocol-relative URLs ("//evil.com") which are not same-origin.
+  if (target.startsWith('//')) return '/dashboard'
+  return target
+}
 
 export default function Login() {
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { t } = useI18n()
+  const motionSafe = !useReducedMotion()
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
 
@@ -16,46 +34,49 @@ export default function Login() {
     setLoading(true)
     try {
       await login({ email: form.email, password: form.password })
-      navigate('/dashboard')
+      navigate(safeRedirect(location.state?.from?.pathname), { replace: true })
     } catch (err) {
-      toast.error(err.message || 'Login failed. Check your credentials.')
+      toast.error(err.message || t('auth.loginFailed'))
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <AuthLayout title="Welcome Back" subtitle="Sign in to continue your journey.">
+    <AuthLayout title={t('auth.loginTitle')} subtitle={t('auth.loginSubtitle')}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <Field
-          label="Email"
+          label={t('auth.email')}
           type="email"
           value={form.email}
           onChange={(v) => setForm((f) => ({ ...f, email: v }))}
-          placeholder="you@email.com"
+          placeholder={t('auth.emailPlaceholder')}
           autoFocus
         />
         <Field
-          label="Password"
+          label={t('auth.password')}
           type="password"
           value={form.password}
           onChange={(v) => setForm((f) => ({ ...f, password: v }))}
-          placeholder="••••••••"
+          placeholder={t('auth.passwordPlaceholder')}
         />
         <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={motionSafe && !loading ? { scale: 1.02 } : undefined}
+          whileTap={motionSafe && !loading ? { scale: 0.98 } : undefined}
           type="submit"
-          className="btn-primary"
+          className="btn-primary btn-block"
           disabled={loading}
-          style={{ marginTop: '8px', fontSize: '15px', padding: '14px', opacity: loading ? 0.7 : 1 }}
+          style={{ marginTop: '8px', fontSize: '15px', padding: '14px' }}
         >
-          {loading ? 'Signing In...' : 'Sign In'}
+          {loading ? t('auth.signingIn') : t('auth.signIn')}
         </motion.button>
-        <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: '14px' }}>
-          Don't have an account?{' '}
-          <Link to="/register" style={{ color: '#00f5ff', textDecoration: 'none', fontWeight: 600 }}>
-            Create one
+        <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+          {t('auth.noAccount')}{' '}
+          <Link
+            to="/register"
+            style={{ color: 'var(--neon-cyan)', textDecoration: 'none', fontWeight: 600 }}
+          >
+            {t('auth.createOne')}
           </Link>
         </p>
       </form>

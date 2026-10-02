@@ -1,19 +1,17 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
-import { createTournament } from '../services/tournamentService'
-import { nextPowerOfTwo } from '../utils/bracket'
 import { Copy, Users, Gauge } from 'lucide-react'
 import toast from 'react-hot-toast'
-
-const DIFFICULTIES = [
-  { value: 'easy', label: 'Easy', description: 'Short, simple phrases', color: '#10b981' },
-  { value: 'medium', label: 'Medium', description: 'Moderate complexity', color: '#f59e0b' },
-  { value: 'hard', label: 'Hard', description: 'Complex, long phrases', color: '#ef4444' },
-]
+import { createTournament } from '../services/tournamentService'
+import { nextPowerOfTwo } from '../utils/bracket'
+import { useI18n } from '../i18n'
+import { FormLayout } from '../components/ui/FormLayout'
 
 export default function CreateTournament() {
   const navigate = useNavigate()
+  const { t } = useI18n()
+  const motionSafe = !useReducedMotion()
   const [name, setName] = useState('')
   const [maxPlayers, setMaxPlayers] = useState(8)
   const [difficulty, setDifficulty] = useState('medium')
@@ -22,7 +20,7 @@ export default function CreateTournament() {
 
   const handleCreate = async (e) => {
     e.preventDefault()
-    if (!name.trim()) { toast.error('Tournament name is required.'); return }
+    if (!name.trim()) { toast.error(t('create.nameRequired')); return }
     setLoading(true)
     try {
       const tournament = await createTournament({
@@ -32,7 +30,7 @@ export default function CreateTournament() {
       })
       setCreated(tournament)
     } catch (err) {
-      toast.error(err.message || 'Failed to create tournament.')
+      toast.error(err.message || t('create.failed'))
     } finally {
       setLoading(false)
     }
@@ -40,190 +38,173 @@ export default function CreateTournament() {
 
   const copyCode = () => {
     navigator.clipboard.writeText(created.code)
-    toast.success('Code copied!')
+    toast.success(t('common.copied'))
   }
 
   if (created) {
     return (
-      <PageLayout>
+      <FormLayout title={t('create.created')} subtitle={t('shareCode.title')}>
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
+          initial={motionSafe ? { opacity: 0, scale: 0.96 } : false}
           animate={{ opacity: 1, scale: 1 }}
-          className="glass-card"
-          style={{ padding: '48px', textAlign: 'center', maxWidth: '480px' }}
+          className="flex flex-col gap-6"
         >
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🏁</div>
-          <h2 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '28px', fontWeight: 800, color: 'white', marginBottom: '8px' }}>
-            Tournament Created!
-          </h2>
-          <p style={{ color: 'rgba(255,255,255,0.4)', marginBottom: '32px', fontSize: '15px' }}>
-            Share this code with your players.
-          </p>
-          <div style={{
-            background: 'rgba(0,245,255,0.06)',
-            border: '1px solid rgba(0,245,255,0.3)',
-            borderRadius: '12px',
-            padding: '20px',
-            marginBottom: '20px',
-            cursor: 'pointer',
-          }} onClick={copyCode}>
-            <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '36px', fontWeight: 700, color: '#00f5ff', letterSpacing: '0.15em' }}>
-              {created.code}
-            </div>
-            <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-              <Copy size={12} /> Click to copy
-            </div>
+          <div
+            className="font-mono font-bold neon-text-cyan cursor-pointer rounded-lg"
+            style={{
+              fontSize: 'clamp(28px, 7vw, 38px)',
+              letterSpacing: '0.15em',
+              padding: '22px 16px',
+              background: 'rgba(0,245,255,0.06)',
+              border: '1px solid var(--border-neon)',
+            }}
+            onClick={copyCode}
+            role="button"
+            tabIndex={0}
+            aria-label={t('shareCode.copyLabel')}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                copyCode()
+              }
+            }}
+          >
+            {created.code}
+            <span
+              className="mt-3 flex items-center justify-center gap-1.5 text-[12px] font-sans font-normal tracking-normal"
+              style={{ color: 'var(--text-muted)', letterSpacing: 0 }}
+            >
+              <Copy size={12} aria-hidden="true" /> {t('common.clickToCopy')}
+            </span>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="btn-primary"
-            style={{ width: '100%', fontSize: '15px', padding: '14px' }}
+
+          <button
+            type="button"
+            className="btn-primary btn-block"
+            style={{ fontSize: '15px', padding: '14px' }}
             onClick={() => navigate(`/lobby/${created.id}`)}
           >
-            Go to Lobby
-          </motion.button>
+            {t('create.goToLobby')}
+          </button>
         </motion.div>
-      </PageLayout>
+      </FormLayout>
     )
   }
 
   return (
-    <PageLayout>
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-card"
-        style={{ padding: '40px', width: '100%', maxWidth: '520px' }}
-      >
-        <h1 style={{ fontFamily: 'Rajdhani, sans-serif', fontSize: '32px', fontWeight: 800, color: 'white', marginBottom: '6px' }}>
-          Create Tournament
-        </h1>
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '14px', marginBottom: '32px' }}>
-          Set up your race and invite players.
-        </p>
+    <FormLayout title={t('create.title')} subtitle={t('create.subtitle')}>
+      <form onSubmit={handleCreate} className="flex flex-col gap-6">
+        {/* Name */}
+        <div>
+          <label className="field-label" htmlFor="tournament-name">
+            {t('create.name')}
+          </label>
+          <input
+            id="tournament-name"
+            className="input-field"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t('create.namePlaceholder')}
+            maxLength={60}
+            autoFocus
+          />
+        </div>
 
-        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* Name */}
-          <div>
-            <label className="field-label">Tournament Name</label>
-            <input
-              className="input-field"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Friday Night Speed Run"
-              maxLength={60}
-              autoFocus
-            />
-          </div>
+        {/* Max players */}
+        <div>
+          <label className="field-label flex items-center gap-2" htmlFor="max-players">
+            <Users size={14} aria-hidden="true" /> {t('create.maxPlayers')}
+          </label>
+          <input
+            id="max-players"
+            className="input-field font-mono"
+            type="number"
+            min={2}
+            max={64}
+            value={maxPlayers}
+            onChange={(e) => {
+              const n = parseInt(e.target.value, 10)
+              if (Number.isNaN(n)) return
+              setMaxPlayers(Math.min(64, Math.max(2, n)))
+            }}
+            style={{ maxWidth: '120px' }}
+          />
+          <p className="mt-2 text-[12px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+            {t('create.maxPlayersHint', { slots: nextPowerOfTwo(maxPlayers) })}
+          </p>
+        </div>
 
-          {/* Max players */}
-          <div>
-            <label className="field-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-              <Users size={14} /> Max Players
-            </label>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <input
-                  className="input-field"
-                  type="number"
-                  min={2}
-                  max={64}
-                  value={maxPlayers}
-                  onChange={(e) => {
-                    const n = parseInt(e.target.value, 10)
-                    if (Number.isNaN(n)) return
-                    setMaxPlayers(Math.min(64, Math.max(2, n)))
-                  }}
-                  style={{ maxWidth: '110px' }}
-                />
-                <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.35)' }}>
-                  Any count from 2 to 64. Odd counts get automatic BYEs to the next
-                  power of two ({nextPowerOfTwo(maxPlayers)} slots here).
-                </span>
-              </div>
+        {/* Difficulty */}
+        <fieldset>
+          <legend className="field-label flex items-center gap-2">
+            <Gauge size={14} aria-hidden="true" /> {t('create.difficulty')}
+          </legend>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {['easy', 'medium', 'hard'].map((value) => (
+              <SelectPill
+                key={value}
+                value={value}
+                label={t(`difficulty.${value}`)}
+                description={t(`difficulty.${value}Desc`)}
+                selected={difficulty === value}
+                onClick={() => setDifficulty(value)}
+                motionSafe={motionSafe}
+              />
+            ))}
           </div>
+        </fieldset>
 
-          {/* Difficulty */}
-          <div>
-            <label className="field-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-              <Gauge size={14} /> Difficulty
-            </label>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              {DIFFICULTIES.map((d) => (
-                <SelectPill
-                  key={d.value}
-                  label={d.label}
-                  description={d.description}
-                  selected={difficulty === d.value}
-                  onClick={() => setDifficulty(d.value)}
-                  color={d.color}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-            <button type="button" className="btn-ghost" onClick={() => navigate('/dashboard')} style={{ flex: 1 }}>
-              Cancel
-            </button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              type="submit"
-              className="btn-primary"
-              disabled={loading}
-              style={{ flex: 2, opacity: loading ? 0.7 : 1 }}
-            >
-              {loading ? 'Creating...' : 'Create Tournament'}
-            </motion.button>
-          </div>
-        </form>
-      </motion.div>
-    </PageLayout>
+        <div className="mt-1 flex flex-col-reverse gap-3 sm:flex-row">
+          <button type="button" className="btn-ghost sm:flex-1" onClick={() => navigate('/dashboard')}>
+            {t('common.cancel')}
+          </button>
+          <motion.button
+            whileHover={motionSafe && !loading ? { scale: 1.02 } : undefined}
+            whileTap={motionSafe && !loading ? { scale: 0.98 } : undefined}
+            type="submit"
+            className="btn-primary sm:flex-2"
+            disabled={loading}
+          >
+            {loading ? t('create.submitting') : t('create.submit')}
+          </motion.button>
+        </div>
+      </form>
+    </FormLayout>
   )
 }
 
-function SelectPill({ label, description, selected, onClick, color }) {
+/** Radio-style selector: a real button group inside a <fieldset>. */
+function SelectPill({ label, description, selected, onClick, motionSafe }) {
   return (
     <motion.button
-      whileTap={{ scale: 0.95 }}
+      whileTap={motionSafe ? { scale: 0.97 } : undefined}
       type="button"
+      role="radio"
+      aria-checked={selected}
       onClick={onClick}
+      className="text-left transition-all"
       style={{
-        padding: '10px 18px',
-        borderRadius: '10px',
-        border: `1px solid ${selected ? color : 'rgba(255,255,255,0.1)'}`,
-        background: selected ? `${color}15` : 'transparent',
-        color: selected ? color : 'rgba(255,255,255,0.5)',
-        fontFamily: 'Rajdhani, sans-serif',
-        fontSize: '14px',
-        fontWeight: 700,
-        cursor: 'pointer',
-        transition: 'all 0.15s',
-        textAlign: 'left',
+        padding: '12px 14px',
+        borderRadius: 'var(--radius-md)',
+        border: `1px solid ${selected ? 'var(--border-neon)' : 'var(--border-glass)'}`,
+        background: selected ? 'rgba(0,245,255,0.08)' : 'var(--bg-inset)',
+        boxShadow: selected ? '0 0 0 1px rgba(0,245,255,0.18)' : 'none',
       }}
     >
-      <div>{label}</div>
-      {description && <div style={{ fontSize: '11px', opacity: 0.7, fontWeight: 400, fontFamily: 'Inter, sans-serif', marginTop: '2px' }}>{description}</div>}
+      <span
+        className="font-racing block text-sm font-bold tracking-wide"
+        style={{ color: selected ? 'var(--neon-cyan)' : 'var(--text-secondary)' }}
+      >
+        {label}
+      </span>
+      {description && (
+        <span
+          className="mt-0.5 block text-[11px] leading-snug"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          {description}
+        </span>
+      )}
     </motion.button>
-  )
-}
-
-function PageLayout({ children }) {
-  return (
-    <div style={{
-      minHeight: '100vh',
-      background: '#080b14',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px',
-      position: 'relative',
-    }}>
-      <div className="bg-grid" style={{ position: 'absolute', inset: 0, opacity: 0.3 }} />
-      <div style={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', justifyContent: 'center' }}>
-        {children}
-      </div>
-    </div>
   )
 }

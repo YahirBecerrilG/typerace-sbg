@@ -42,32 +42,56 @@ export function useRealtimeChannel({ channelName, onMessage, enabled = true }) {
 
 /**
  * Subscribe to Supabase Postgres changes on a table.
+ *
+ * The callbacks are held in a ref instead of the dependency list. Two reasons:
+ *   - without it every inline arrow callback (`onUpdate: () => refresh()`)
+ *     would tear down and re-join the channel on every render, which is how
+ *     duplicate listeners and missed events appear;
+ *   - the ref always holds the newest closure, so the handler cannot act on a
+ *     stale tournamentId / user.
+ *
+ * The subscription itself therefore only depends on (table, filter, enabled).
  */
 export function usePostgresChanges({ table, schema = 'public', filter, onInsert, onUpdate, onDelete, enabled = true }) {
+  const handlersRef = useRef({ onInsert, onUpdate, onDelete })
+  useEffect(() => {
+    handlersRef.current = { onInsert, onUpdate, onDelete }
+  })
+
+  // `filter` is part of the channel identity, so a changed filter must resubscribe.
+  // Defaults to undefined (PostgREST: no filter) rather than a fake string.
+  const safeFilter = filter || undefined
+
   useEffect(() => {
     if (!enabled) return
 
-    let sub = supabase
-      .channel(`${table}-changes-${filter || 'all'}`)
+    const channel = supabase.channel(`pg-${schema}-${table}-${safeFilter || 'all'}`)
+
+    // Argument shapes are part of the public contract of this hook and must not
+    // change: callers receive the ROW, not the raw realtime payload.
+    //   onInsert -> payload.new
+    //   onUpdate -> (newRow, oldRow)
+    //   onDelete -> payload.old
+    channel
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema, table, filter },
-        (payload) => onInsert?.(payload.new)
+        { event: 'INSERT', schema, table, filter: safeFilter },
+        (payload) => handlersRef.current.onInsert?.(payload.new)
       )
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema, table, filter },
-        (payload) => onUpdate?.(payload.new, payload.old)
+        { event: 'UPDATE', schema, table, filter: safeFilter },
+        (payload) => handlersRef.current.onUpdate?.(payload.new, payload.old)
       )
       .on(
         'postgres_changes',
-        { event: 'DELETE', schema, table, filter },
-        (payload) => onDelete?.(payload.old)
+        { event: 'DELETE', schema, table, filter: safeFilter },
+        (payload) => handlersRef.current.onDelete?.(payload.old)
       )
       .subscribe()
 
     return () => {
-      supabase.removeChannel(sub)
+      supabase.removeChannel(channel)
     }
-  }, [table, filter, enabled])
+  }, [schema, table, safeFilter, enabled])
 }

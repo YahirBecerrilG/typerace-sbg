@@ -110,6 +110,26 @@ export async function getMyParticipant(tournamentId, userId) {
   return data
 }
 
+/**
+ * A single tournament row, without the roster.
+ *
+ * Used by the match gate, which only needs `id`, `status` and `host_id` to
+ * decide where a waiting player belongs. Deliberately does NOT filter by
+ * anything the client could tamper with: RLS decides whether this tournament is
+ * visible at all, and a row that is not visible simply comes back as null.
+ */
+export async function getTournament(tournamentId) {
+  if (!tournamentId) return null
+  const { data, error } = await supabase
+    .from('tournaments')
+    .select('id, name, code, status, host_id, current_round, difficulty, bracket_slots, bracket_byes, max_players')
+    .eq('id', tournamentId)
+    .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
 // ─── Host controls ──────────────────────────────────────────────────────────
 export async function closeRegistration(tournamentId) {
   const { data, error } = await supabase.rpc('close_registration', {
@@ -223,6 +243,64 @@ export async function getMatch(matchId) {
 
   if (error) throw error
   return data
+}
+
+/**
+ * Everything the match gate needs, resolved server-side from `auth.uid()`.
+ *
+ * `match_gate_state()` (migration 007) answers the whole question in one call:
+ * the tournament status, whether the caller is the host, the caller's
+ * participant status and the one match the caller may act on. The client never
+ * supplies an identity the server has to trust — `userId` is only used by the
+ * fallback path below.
+ *
+ * If 007 has not been applied yet the RPC does not exist, and the gate silently
+ * degrades to the three scoped reads the frontend did before. Both paths return
+ * the same shape, so the gate itself has no notion of which one ran.
+ */
+export async function getMatchGateState(tournamentId, userId) {
+  const { data, error } = await supabase.rpc('match_gate_state', {
+    p_tournament_id: tournamentId,
+  })
+
+  if (!error && data) {
+    return {
+      source: 'rpc',
+      tournament: data.tournament_id
+        ? { id: data.tournament_id, status: data.tournament_status, host_id: data.host_id }
+        : null,
+      participant: data.participant_status
+        ? { id: data.participant_id ?? null, status: data.participant_status }
+        : null,
+      // A match with no race (a BYE) is terminal, so it never reaches here; the
+      // race-less case still returns null instead of a half-built URL.
+      match:
+        data.match_id && ACTIONABLE_MATCH_STATUSES.includes(data.match_status)
+          ? {
+              id: data.match_id,
+              status: data.match_status,
+              races: data.race_id ? [{ id: data.race_id }] : [],
+            }
+          : null,
+    }
+  }
+
+  // Fallback for a project that has not run 007 yet.
+  const missingRpc =
+    error &&
+    (error.code === 'PGRST202' ||
+      error.code === '42883' ||
+      error.code === '404' ||
+      /match_gate_state|does not exist/i.test(error.message || ''))
+
+  if (!missingRpc) throw error
+
+  const [match, tournament, participant] = await Promise.all([
+    getActiveMatchForPlayer(tournamentId, userId),
+    getTournament(tournamentId),
+    getMyParticipant(tournamentId, userId),
+  ])
+  return { source: 'fallback', tournament, participant, match }
 }
 
 /** The participant's current actionable match in a tournament (or null). */

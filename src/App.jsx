@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './hooks/useAuth'
-import { PrivateRoute } from './components/PrivateRoute'
+import { PrivateRoute, PublicOnlyRoute } from './components/PrivateRoute'
 
 import Home from './pages/Home'
 import Login from './pages/Login'
@@ -20,12 +20,16 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Public */}
+          {/* Public — reachable without a session */}
           <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
+          <Route path="/register" element={<PublicOnlyRoute><Register /></PublicOnlyRoute>} />
 
-          {/* Private */}
+          {/* Private — require a real Supabase session.
+              Every route below renders nothing until useAuth has resolved the
+              session, and bounces to /login (remembering the target URL) when
+              there is none. Resource-level permissions (is this match mine? is
+              this tournament mine?) are enforced by RLS/RPC, not here. */}
           <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/create-tournament" element={<PrivateRoute><CreateTournament /></PrivateRoute>} />
           <Route path="/join-tournament" element={<PrivateRoute><JoinTournament /></PrivateRoute>} />
@@ -45,18 +49,21 @@ export default function App() {
         toastOptions={{
           duration: 4000,
           style: {
-            background: '#111827',
+            background: 'rgba(16, 21, 36, 0.94)',
             color: '#f1f5f9',
-            border: '1px solid rgba(255,255,255,0.08)',
+            border: '1px solid rgba(148, 163, 184, 0.14)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            boxShadow: '0 18px 48px -22px rgba(0, 0, 0, 0.9)',
             fontFamily: 'Inter, sans-serif',
             fontSize: '14px',
-            borderRadius: '10px',
+            borderRadius: '12px',
           },
           success: {
-            iconTheme: { primary: '#10b981', secondary: '#111827' },
+            iconTheme: { primary: '#10b981', secondary: '#101524' },
           },
           error: {
-            iconTheme: { primary: '#ef4444', secondary: '#111827' },
+            iconTheme: { primary: '#ef4444', secondary: '#101524' },
           },
         }}
       />
