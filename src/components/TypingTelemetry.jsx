@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { calculateWPM, calculateAccuracy } from '../utils/typing'
 import { useI18n } from '../i18n'
 
@@ -34,18 +34,18 @@ export function LiveTypingMetrics({
       <Metric
         label={t('unit.wpm')}
         value={wpm > 0 ? wpm : '—'}
-        accent="var(--neon-cyan)"
+        accent="var(--accent)"
         unit={running ? t('live') : null}
       />
       <Metric
         label={t('common.accuracy')}
         value={`${accuracy}%`}
-        accent="var(--violet)"
+        accent="var(--text-secondary)"
       />
       <Metric
         label={t('race.errors')}
         value={errors}
-        accent={errors > 0 ? 'var(--neon-red)' : 'var(--text-primary)'}
+        accent={errors > 0 ? 'var(--danger)' : 'var(--text-primary)'}
       />
     </div>
   )
@@ -54,7 +54,7 @@ export function LiveTypingMetrics({
 /** One metric cell. The value is the loudest element; the label is a whisper. */
 function Metric({ label, value, accent, unit }) {
   return (
-    <div className="metric p-5 text-center sm:p-6" style={{ background: 'rgba(10,14,26,0.8)' }}>
+    <div className="metric p-5 text-center sm:p-6" style={{ background: 'var(--bg-card)' }}>
       <span className="label-xs">{label}</span>
       <span
         className="metric-value metric-lg mt-3"
@@ -69,6 +69,7 @@ function Metric({ label, value, accent, unit }) {
 
 /** Thin progress rail that mirrors the phrase fill. */
 export function ProgressRail({ value = 0 }) {
+  const motionSafe = !useReducedMotion()
   const clamped = Math.min(Math.max(value, 0), 100)
 
   return (
@@ -82,12 +83,12 @@ export function ProgressRail({ value = 0 }) {
     >
       <motion.div
         animate={{ width: `${clamped}%` }}
-        transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+        transition={{ duration: motionSafe ? 0.18 : 0, ease: 'easeOut' }}
         style={{
           height: '100%',
-          background: 'linear-gradient(90deg, #00f5ff, #8b5cf6)',
+          background: 'var(--accent)',
           borderRadius: 2,
-          boxShadow: '0 0 12px rgba(0,245,255,0.5)',
+          boxShadow: 'none',
         }}
       />
     </div>

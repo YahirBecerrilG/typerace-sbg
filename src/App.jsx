@@ -50,20 +50,20 @@ export default function App() {
           duration: 4000,
           style: {
             background: 'rgba(16, 21, 36, 0.94)',
-            color: '#f1f5f9',
-            border: '1px solid rgba(148, 163, 184, 0.14)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            boxShadow: '0 18px 48px -22px rgba(0, 0, 0, 0.9)',
+            color: 'var(--text-primary)',
+            border: '1px solid rgba(177,183,192,0.14)',
+            backdropFilter: 'none',
+            WebkitBackdropFilter: 'none',
+            boxShadow: 'none',
             fontFamily: 'Inter, sans-serif',
             fontSize: '14px',
             borderRadius: '12px',
           },
           success: {
-            iconTheme: { primary: '#10b981', secondary: '#101524' },
+            iconTheme: { primary: 'var(--success)', secondary: 'var(--bg-card)' },
           },
           error: {
-            iconTheme: { primary: '#ef4444', secondary: '#101524' },
+            iconTheme: { primary: 'var(--danger)', secondary: 'var(--bg-card)' },
           },
         }}
       />

@@ -60,8 +60,8 @@ function RouteLoading() {
         width: '40px',
         height: '40px',
         borderRadius: '50%',
-        border: '3px solid rgba(0,245,255,0.2)',
-        borderTopColor: '#00f5ff',
+        border: '3px solid rgba(177,183,192,0.2)',
+        borderTopColor: 'var(--accent)',
         animation: 'spin 0.8s linear infinite',
       }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

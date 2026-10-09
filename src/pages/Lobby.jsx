@@ -1,3 +1,4 @@
+import { entrance, hoverLift } from '../components/ui/PresentationMotion'
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -22,7 +23,7 @@ import { LoadingScreen } from '../components/ui/LoadingScreen'
 import { Badge } from '../components/ui/Badge'
 import TournamentUnavailable from '../components/TournamentUnavailable'
 
-const PLAYER_COLORS = ['#00f5ff', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#f97316', '#06b6d4', '#a855f7']
+const PLAYER_COLORS = ['var(--accent)', 'var(--text-secondary)', 'var(--text-secondary)', 'var(--text-secondary)', 'var(--text-secondary)', 'var(--text-secondary)', 'var(--text-secondary)', 'var(--text-secondary)']
 
 /**
  * Lobby — the tournament control room.
@@ -219,10 +220,8 @@ export default function Lobby() {
       <main className="pb-24">
         {/* ═══ Identity + shareable code ══════════════════════════════════ */}
         <section className="grid gap-8 pb-12 lg:grid-cols-[minmax(0,1fr)_320px] lg:gap-10">
-          <motion.div
-            initial={motionSafe ? { opacity: 0, y: 18 } : false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
+          <motion.div data-ui-motion
+            {...entrance(motionSafe, 0)}
           >
             <span className="eyebrow">{t('lobby.controlLabel')}</span>
 
@@ -251,7 +250,7 @@ export default function Lobby() {
             <div className="mt-9 flex items-end gap-8">
               <div>
                 <span className="label-xs">{t('lobby.players')}</span>
-                <div className="metric-value metric-xl mt-3" style={{ color: 'var(--neon-cyan)' }}>
+                <div className="metric-value metric-xl mt-3" style={{ color: 'var(--accent)' }}>
                   {activePlayers.length}
                   <span
                     className="metric-value"
@@ -266,9 +265,9 @@ export default function Lobby() {
                 <div
                   className="mb-2 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[12px]"
                   style={{
-                    background: 'rgba(245,158,11,0.09)',
-                    border: '1px solid rgba(245,158,11,0.28)',
-                    color: 'var(--neon-yellow)',
+                    background: 'rgba(177,183,192,0.09)',
+                    border: '1px solid rgba(177,183,192,0.28)',
+                    color: 'var(--warning)',
                   }}
                 >
                   <Crown size={13} aria-hidden="true" />
@@ -280,25 +279,19 @@ export default function Lobby() {
 
           {/* Code panel — the single most-copied object in the app, so it is a
               large, high-contrast, obviously clickable block. */}
-          <motion.button
+          <motion.button data-ui-motion
             type="button"
-            whileHover={motionSafe ? { y: -3 } : undefined}
+            whileHover={hoverLift(motionSafe)}
             onClick={copyCode}
             aria-label={t('lobby.codeLabel')}
             className="panel panel-accent relative overflow-hidden p-8 text-center"
-            style={{ cursor: 'pointer', borderColor: 'rgba(0,245,255,0.28)' }}
+            style={{ cursor: 'pointer', borderColor: 'rgba(177,183,192,0.28)' }}
           >
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background: 'radial-gradient(300px 180px at 50% 0%, rgba(0,245,255,0.18), transparent 70%)',
-              }}
-            />
+
             <div className="relative">
               <div className="label-xs">{t('lobby.codeLabel')}</div>
               <div
-                className="num neon-text-cyan mt-4 text-[42px] font-bold"
+                className="num text-code mt-4 text-[42px] font-bold"
                 style={{ letterSpacing: '0.1em', lineHeight: 1 }}
               >
                 {tournament.code}
@@ -335,9 +328,9 @@ export default function Lobby() {
 
               <div className="flex flex-wrap items-center gap-3">
                 {canShowStart && (
-                  <motion.button
-                    whileHover={motionSafe && canStart ? { scale: 1.02, y: -2 } : undefined}
-                    whileTap={motionSafe && canStart ? { scale: 0.98 } : undefined}
+                  <motion.button data-ui-motion
+                    whileHover={hoverLift(motionSafe && canStart)}
+                    whileTap={motionSafe && canStart ? { y: 0, transition: { duration: 0.15, ease: 'easeOut' } } : undefined}
                     className="btn-primary btn-lg btn-cta"
                     disabled={!canStart || starting}
                     onClick={handleStart}
@@ -410,7 +403,7 @@ export default function Lobby() {
                   </thead>
                   <tbody>
                     {practiceRanking.map((p, idx) => (
-                      <tr key={p.id} data-me={p.user_id === user?.id}>
+                      <motion.tr {...entrance(motionSafe, idx)} key={p.id} data-me={p.user_id === user?.id}>
                         <td>
                           <span
                             className="medal"
@@ -433,13 +426,13 @@ export default function Lobby() {
                           {p.user_id === user?.id && (
                             <span
                               className="ml-3 text-[10px] font-bold uppercase"
-                              style={{ color: 'var(--neon-cyan)', letterSpacing: '0.14em' }}
+                              style={{ color: 'var(--accent)', letterSpacing: '0.14em' }}
                             >
                               {t('common.youShort')}
                             </span>
                           )}
                         </td>
-                        <td className="col-num" style={{ color: 'var(--neon-cyan)', fontWeight: 700 }}>
+                        <td className="col-num" style={{ color: 'var(--accent)', fontWeight: 700 }}>
                           {Number(p.practice_score || 0).toFixed(1)}
                         </td>
                         <td className="col-num" style={{ color: 'var(--text-secondary)' }}>
@@ -448,7 +441,7 @@ export default function Lobby() {
                         <td className="col-num" style={{ color: 'var(--text-muted)' }}>
                           {p.practice_runs}
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))}
                   </tbody>
                 </table>
@@ -470,7 +463,7 @@ export default function Lobby() {
               </div>
               <span className="flex items-center gap-2 text-[13px]" style={{ color: 'var(--text-secondary)' }}>
                 <Users size={15} style={{ color: 'var(--text-muted)' }} aria-hidden="true" />
-                <span className="num" style={{ color: 'var(--neon-cyan)' }}>{activePlayers.length}</span>
+                <span className="num" style={{ color: 'var(--accent)' }}>{activePlayers.length}</span>
               </span>
             </div>
 
@@ -490,10 +483,9 @@ export default function Lobby() {
 
               {/* Empty slots */}
               {Array.from({ length: Math.max(0, tournament.max_players - players.length) }, (_, i) => (
-                <motion.div
+                <motion.div data-ui-motion
                   key={`empty-${i}`}
-                  initial={motionSafe ? { opacity: 0 } : false}
-                  animate={{ opacity: 1 }}
+                  {...entrance(motionSafe, 0)}
                   className="flex items-center px-5 italic"
                   style={{
                     height: '60px',
@@ -513,21 +505,15 @@ export default function Lobby() {
           <aside className="flex flex-col gap-5">
             {!isHost && (
               <div className="panel panel-accent relative overflow-hidden p-7">
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0"
-                  style={{
-                    background: 'radial-gradient(300px 200px at 100% 0%, rgba(0,245,255,0.16), transparent 70%)',
-                  }}
-                />
+
                 <div className="relative">
                   <span
                     className="grid h-11 w-11 place-items-center"
                     style={{
                       borderRadius: 'var(--radius-md)',
-                      background: 'rgba(0,245,255,0.1)',
-                      border: '1px solid rgba(0,245,255,0.26)',
-                      color: 'var(--neon-cyan)',
+                      background: 'rgba(177,183,192,0.1)',
+                      border: '1px solid rgba(177,183,192,0.26)',
+                      color: 'var(--accent)',
                     }}
                     aria-hidden="true"
                   >
@@ -566,8 +552,8 @@ export default function Lobby() {
                       className="flex items-center gap-3 px-3.5 py-2.5"
                       style={{
                         borderRadius: 'var(--radius-sm)',
-                        background: isFinal ? 'rgba(245,158,11,0.08)' : 'var(--bg-inset)',
-                        border: `1px solid ${isFinal ? 'rgba(245,158,11,0.24)' : 'var(--border-glass)'}`,
+                        background: isFinal ? 'rgba(177,183,192,0.08)' : 'var(--bg-inset)',
+                        border: `1px solid ${isFinal ? 'rgba(177,183,192,0.24)' : 'var(--border-glass)'}`,
                       }}
                     >
                       <span
@@ -579,7 +565,7 @@ export default function Lobby() {
                       <span
                         className="font-racing text-[13px] font-bold uppercase"
                         style={{
-                          color: isFinal ? 'var(--neon-yellow)' : 'var(--text-secondary)',
+                          color: isFinal ? 'var(--warning)' : 'var(--text-secondary)',
                           letterSpacing: '0.08em',
                         }}
                       >
@@ -622,16 +608,16 @@ export default function Lobby() {
 
 /** Top-three rank medallions get podium tints; everyone else stays neutral. */
 function rankTint(idx) {
-  if (idx === 0) return 'rgba(245,158,11,0.14)'
+  if (idx === 0) return 'rgba(177,183,192,0.14)'
   if (idx === 1) return 'rgba(203,213,225,0.12)'
-  if (idx === 2) return 'rgba(180,83,9,0.14)'
+  if (idx === 2) return 'rgba(177,183,192,0.14)'
   return 'rgba(255,255,255,0.03)'
 }
 
 function rankBorder(idx) {
-  if (idx === 0) return 'rgba(245,158,11,0.5)'
+  if (idx === 0) return 'rgba(177,183,192,0.5)'
   if (idx === 1) return 'rgba(203,213,225,0.45)'
-  if (idx === 2) return 'rgba(180,83,9,0.5)'
+  if (idx === 2) return 'rgba(177,183,192,0.5)'
   return 'var(--border-glass)'
 }
 
@@ -655,11 +641,10 @@ function PlayerCard({ player, index, isCurrentUser, colorIndex, motionSafe }) {
         })
 
   return (
-    <motion.div
-      initial={motionSafe ? { opacity: 0, x: -16 } : false}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 16 }}
-      transition={{ delay: Math.min(index, 8) * 0.05 }}
+    <motion.div data-ui-motion
+      {...entrance(motionSafe, index)}
+      exit={motionSafe ? { opacity: 0 } : undefined}
+      transition={{ duration: motionSafe ? 0.3 : 0, ease: 'easeOut' }}
       className="flex items-center gap-4 px-5 py-4"
       style={{
         background: isCurrentUser ? `${color}0f` : 'var(--bg-inset)',

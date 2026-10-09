@@ -1,3 +1,5 @@
+import { stagger, listItem } from '../components/ui/PresentationMotion'
+import { entrance } from '../components/ui/PresentationMotion'
 import { useState, useEffect, useCallback } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -108,50 +110,15 @@ export default function Results() {
       <main className="pb-24">
         {/* ═══ Champion stage ══════════════════════════════════════════════ */}
         <section className="relative overflow-hidden pb-16 pt-10 lg:pb-24 lg:pt-16">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-            <div className="bg-grid-fade absolute inset-x-0 top-0 h-full opacity-70" />
-            <div
-              className="aurora"
-              style={{
-                top: '-30%',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: 760,
-                height: 620,
-                background: 'radial-gradient(circle, rgba(245,158,11,0.16), transparent 64%)',
-              }}
-            />
-            <div
-              className="aurora"
-              style={{
-                top: '-10%',
-                left: '8%',
-                width: 520,
-                height: 480,
-                background: 'radial-gradient(circle, rgba(0,245,255,0.13), transparent 66%)',
-              }}
-            />
-            <div
-              className="aurora"
-              style={{
-                top: '-10%',
-                right: '8%',
-                width: 520,
-                height: 480,
-                background: 'radial-gradient(circle, rgba(139,92,246,0.16), transparent 66%)',
-              }}
-            />
-          </div>
 
-          <motion.div
-            initial={motionSafe ? { opacity: 0, scale: 0.96 } : false}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7 }}
+
+          <motion.div data-ui-motion
+            {...entrance(motionSafe, 0)}
             className="relative flex flex-col items-center text-center"
           >
-            <motion.span
-              animate={motionSafe ? { rotate: [0, -5, 5, -3, 3, 0] } : undefined}
-              transition={{ duration: 1, delay: 0.5 }}
+            <motion.span data-ui-motion
+              animate={motionSafe ? { opacity: 1 } : undefined}
+              transition={{ duration: motionSafe ? 0.3 : 0, ease: 'easeOut' }}
               className="mb-6 inline-block text-[72px] leading-none"
               aria-hidden="true"
             >
@@ -161,7 +128,7 @@ export default function Results() {
             <span
               className="font-racing font-bold uppercase"
               style={{
-                color: 'var(--neon-yellow)',
+                color: 'var(--warning)',
                 fontSize: 'var(--micro)',
                 letterSpacing: '0.3em',
               }}
@@ -170,7 +137,7 @@ export default function Results() {
             </span>
 
             <h1
-              className="gradient-text display-xl mt-5"
+              className="text-heading display-xl mt-5"
               style={{ maxWidth: '18ch' }}
             >
               {championName}
@@ -194,38 +161,34 @@ export default function Results() {
         </section>
 
         {/* ═══ Tournament facts ═════════════════════════════════════════════ */}
-        <motion.section
-          initial={motionSafe ? { opacity: 0, y: 18 } : false}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+        <motion.section data-ui-motion
+          {...stagger(motionSafe)}
           className="mb-16 grid grid-cols-1 gap-px sm:grid-cols-3"
           style={{ background: 'var(--border-glass)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}
         >
           <Fact
             label={t('results.statDifficulty')}
             value={labels.difficulty(tournament?.difficulty)}
-            accent="var(--neon-yellow)"
+            accent="var(--warning)"
           />
-          <Fact label={t('results.statPlayers')} value={nonWithdrawn} accent="var(--neon-cyan)" />
+          <Fact label={t('results.statPlayers')} value={nonWithdrawn} accent="var(--accent)" />
           <Fact
             label={t('results.statYourResult')}
             value={labels.placement(myStats?.placement) || (myStats ? labels.playerStatus(myStats.status) : '—')}
             accent={
               iWon
-                ? 'var(--neon-yellow)'
+                ? 'var(--warning)'
                 : myStats?.status === 'eliminated'
-                  ? 'var(--neon-red)'
-                  : 'var(--violet)'
+                  ? 'var(--danger)'
+                  : 'var(--text-secondary)'
             }
           />
         </motion.section>
 
         {/* ═══ Podium ═══════════════════════════════════════════════════════ */}
         {podium.length >= 3 && (
-          <motion.section
-            initial={motionSafe ? { opacity: 0, y: 20 } : false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.26 }}
+          <motion.section data-ui-motion
+            {...entrance(motionSafe, 0)}
             className="mb-16"
           >
             <div
@@ -261,10 +224,8 @@ export default function Results() {
 
         {/* ═══ Full standings ═══════════════════════════════════════════════ */}
         {ranked.length > 0 && (
-          <motion.section
-            initial={motionSafe ? { opacity: 0, y: 18 } : false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+          <motion.section data-ui-motion
+            {...entrance(motionSafe, 0)}
             className="mb-16"
           >
             <div
@@ -289,8 +250,8 @@ export default function Results() {
                     </tr>
                   </thead>
                   <tbody>
-                    {ranked.map((p) => (
-                      <tr key={p.id} data-me={p.user_id === user.id}>
+                    {ranked.map((p, i) => (
+                      <motion.tr {...entrance(motionSafe, i)} key={p.id} data-me={p.user_id === user.id}>
                         <td>
                           <span
                             className="font-racing text-[15px] font-extrabold"
@@ -309,7 +270,7 @@ export default function Results() {
                           {p.user_id === user.id && (
                             <span
                               className="ml-3 text-[10px] font-bold uppercase"
-                              style={{ color: 'var(--neon-cyan)', letterSpacing: '0.14em' }}
+                              style={{ color: 'var(--accent)', letterSpacing: '0.14em' }}
                             >
                               {t('common.youShort')}
                             </span>
@@ -324,7 +285,7 @@ export default function Results() {
                         >
                           {labels.placement(p.placement)}
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))}
                   </tbody>
                 </table>
@@ -334,10 +295,8 @@ export default function Results() {
         )}
 
         {/* ═══ Final bracket ═══════════════════════════════════════════════ */}
-        <motion.section
-          initial={motionSafe ? { opacity: 0, y: 18 } : false}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.34 }}
+        <motion.section data-ui-motion
+          {...entrance(motionSafe, 0)}
           className="mb-14"
         >
           <div
@@ -384,8 +343,9 @@ export default function Results() {
 
 // ─── Fact tile ──────────────────────────────────────────────────────────────
 function Fact({ label, value, accent }) {
+  const motionSafe = !useReducedMotion()
   return (
-    <div className="metric p-7" style={{ background: 'rgba(10,14,26,0.8)' }}>
+    <motion.div data-ui-motion variants={listItem(motionSafe)} className="metric p-7" style={{ background: 'var(--bg-card)' }}>
       <span className="label-xs">{label}</span>
       <span
         className="metric-value metric-lg mt-3"
@@ -393,7 +353,7 @@ function Fact({ label, value, accent }) {
       >
         {value}
       </span>
-    </div>
+    </motion.div>
   )
 }
 
@@ -404,21 +364,22 @@ function Fact({ label, value, accent }) {
  * without any extra labelling.
  */
 function PodiumStep({ player, height, rank, isMe }) {
+  const motionSafe = !useReducedMotion()
   const { t } = useI18n()
 
   if (!player) return <div className="w-[30%] max-w-[200px]" aria-hidden="true" />
 
   const heights = { lg: 190, md: 140, sm: 110 }
   const tints = {
-    1: { bg: 'rgba(245,158,11,0.14)', border: 'rgba(245,158,11,0.4)', text: 'var(--neon-yellow)' },
+    1: { bg: 'rgba(177,183,192,0.14)', border: 'rgba(177,183,192,0.4)', text: 'var(--warning)' },
     2: { bg: 'rgba(203,213,225,0.1)', border: 'rgba(203,213,225,0.34)', text: '#cbd5e1' },
-    3: { bg: 'rgba(180,83,9,0.14)', border: 'rgba(180,83,9,0.4)', text: '#d97706' },
+    3: { bg: 'rgba(177,183,192,0.14)', border: 'rgba(177,183,192,0.4)', text: '#d97706' },
   }
   const tint = tints[rank]
   const name = player.profiles?.display_name || t('common.player')
 
   return (
-    <div className="flex w-[30%] max-w-[210px] flex-col items-center">
+    <motion.div {...entrance(motionSafe, rank === 2 ? 0 : rank === 1 ? 1 : 2)} className="flex w-[30%] max-w-[210px] flex-col items-center">
       <span
         className="font-racing text-[13px] font-bold uppercase"
         style={{ color: tint.text, letterSpacing: '0.1em' }}
@@ -435,7 +396,7 @@ function PodiumStep({ player, height, rank, isMe }) {
       </span>
 
       {isMe && (
-        <span className="mt-1.5 text-[9.5px] font-bold uppercase" style={{ color: 'var(--neon-cyan)' }}>
+        <span className="mt-1.5 text-[9.5px] font-bold uppercase" style={{ color: 'var(--accent)' }}>
           {t('common.youShort')}
         </span>
       )}
@@ -445,22 +406,22 @@ function PodiumStep({ player, height, rank, isMe }) {
         style={{
           height: heights[height],
           borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
-          background: `linear-gradient(180deg, ${tint.bg}, rgba(255,255,255,0.015))`,
+          background: 'var(--bg-card)',
           border: `1px solid ${tint.border}`,
           borderBottom: 'none',
-          boxShadow: `0 0 46px -18px ${tint.border}`,
+          boxShadow: 'none',
         }}
       >
         <span className="font-racing text-[34px] font-extrabold" style={{ color: tint.text }}>
           {rank}
         </span>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
 function placementColor(placement) {
-  if (placement === 1) return 'var(--neon-yellow)'
+  if (placement === 1) return 'var(--warning)'
   if (placement === 2) return 'var(--text-secondary)'
   if (placement === 3) return '#b45309'
   return 'var(--text-muted)'

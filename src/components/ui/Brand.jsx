@@ -34,16 +34,16 @@ export function Brand({ size = 'md', showByline = true, linkTo = '/', className 
         style={{
           width: dimensions.mark,
           height: dimensions.mark,
-          borderRadius: Math.round(dimensions.mark * 0.32),
-          background: 'linear-gradient(140deg, rgba(0,245,255,0.24), rgba(139,92,246,0.22))',
-          border: '1px solid rgba(0,245,255,0.3)',
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.12), 0 0 22px -6px rgba(0,245,255,0.5)',
+          borderRadius: 'var(--radius-md)',
+          background: 'var(--bg-card)',
+          border: '1px solid rgba(177,183,192,0.3)',
+          boxShadow: 'none',
         }}
         aria-hidden="true"
       >
         <span
           className="font-racing font-bold leading-none"
-          style={{ fontSize: dimensions.mark * 0.54, color: '#eaffff' }}
+          style={{ fontSize: dimensions.mark * 0.54, color: 'var(--text-primary)' }}
         >
           T
         </span>
@@ -51,7 +51,7 @@ export function Brand({ size = 'md', showByline = true, linkTo = '/', className 
 
       <span className="flex min-w-0 flex-col leading-none">
         <span
-          className="font-racing gradient-text font-bold"
+          className="font-racing text-heading font-bold"
           style={{ fontSize: dimensions.title, letterSpacing: '-0.015em' }}
         >
           {t('brand.name')}

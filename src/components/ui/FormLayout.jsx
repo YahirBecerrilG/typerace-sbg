@@ -1,3 +1,5 @@
+import { motion, useReducedMotion } from 'framer-motion'
+import { entrance } from './PresentationMotion'
 import { Link } from 'react-router-dom'
 import { AppShell } from './AppShell'
 import { Brand } from './Brand'
@@ -15,10 +17,11 @@ import { useI18n } from '../../i18n'
  */
 export function FormLayout({ title, subtitle, children }) {
   const { t } = useI18n()
+  const motionSafe = !useReducedMotion()
 
   return (
     <AppShell width="form">
-      <header className="flex items-center justify-between py-6">
+      <header className="form-header flex items-center justify-between">
         <Brand size="sm" />
         <div className="flex items-center gap-3">
           <Link to="/dashboard" className="btn-ghost btn-sm">
@@ -28,19 +31,19 @@ export function FormLayout({ title, subtitle, children }) {
         </div>
       </header>
 
-      <main className="flex min-h-[68vh] items-center justify-center py-6">
-        <div className="glass-card hairline-top w-full" style={{ padding: '38px' }}>
+      <main className="form-main flex min-h-[68vh] items-center justify-center">
+        <motion.div {...entrance(motionSafe)} className="form-card glass-card hairline-top w-full">
           <h1
             className="mb-2 font-racing font-extrabold tracking-tight"
             style={{ fontSize: '30px', color: 'var(--text-primary)' }}
           >
             {title}
           </h1>
-          <p className="mb-8 text-sm" style={{ color: 'var(--text-muted)' }}>
+          <p className="form-subtitle text-sm">
             {subtitle}
           </p>
           {children}
-        </div>
+        </motion.div>
       </main>
 
       <Footer />

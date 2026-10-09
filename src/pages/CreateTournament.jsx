@@ -1,3 +1,5 @@
+import { FadeMessage } from '../components/ui/PresentationMotion'
+import { entrance, hoverLift } from '../components/ui/PresentationMotion'
 import { useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
@@ -44,19 +46,18 @@ export default function CreateTournament() {
   if (created) {
     return (
       <FormLayout title={t('create.created')} subtitle={t('shareCode.title')}>
-        <motion.div
-          initial={motionSafe ? { opacity: 0, scale: 0.96 } : false}
-          animate={{ opacity: 1, scale: 1 }}
+        <motion.div data-ui-motion
+          {...entrance(motionSafe, 0)}
           className="flex flex-col gap-6"
         >
           <div
-            className="font-mono font-bold neon-text-cyan cursor-pointer rounded-lg"
+            className="font-mono font-bold text-code cursor-pointer rounded-lg"
             style={{
               fontSize: 'clamp(28px, 7vw, 38px)',
               letterSpacing: '0.15em',
               padding: '22px 16px',
-              background: 'rgba(0,245,255,0.06)',
-              border: '1px solid var(--border-neon)',
+              background: 'rgba(177,183,192,0.06)',
+              border: '1px solid var(--accent)',
             }}
             onClick={copyCode}
             role="button"
@@ -129,9 +130,9 @@ export default function CreateTournament() {
             }}
             style={{ maxWidth: '120px' }}
           />
-          <p className="mt-2 text-[12px] leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+          <FadeMessage className="form-help">
             {t('create.maxPlayersHint', { slots: nextPowerOfTwo(maxPlayers) })}
-          </p>
+          </FadeMessage>
         </div>
 
         {/* Difficulty */}
@@ -158,9 +159,9 @@ export default function CreateTournament() {
           <button type="button" className="btn-ghost sm:flex-1" onClick={() => navigate('/dashboard')}>
             {t('common.cancel')}
           </button>
-          <motion.button
-            whileHover={motionSafe && !loading ? { scale: 1.02 } : undefined}
-            whileTap={motionSafe && !loading ? { scale: 0.98 } : undefined}
+          <motion.button data-ui-motion
+            whileHover={hoverLift(motionSafe && !loading)}
+            whileTap={motionSafe && !loading ? { y: 0, transition: { duration: 0.15, ease: 'easeOut' } } : undefined}
             type="submit"
             className="btn-primary sm:flex-2"
             disabled={loading}
@@ -176,8 +177,9 @@ export default function CreateTournament() {
 /** Radio-style selector: a real button group inside a <fieldset>. */
 function SelectPill({ label, description, selected, onClick, motionSafe }) {
   return (
-    <motion.button
-      whileTap={motionSafe ? { scale: 0.97 } : undefined}
+    <motion.button data-ui-motion
+      whileHover={hoverLift(motionSafe)}
+      whileTap={motionSafe ? { y: 0, transition: { duration: 0.15, ease: 'easeOut' } } : undefined}
       type="button"
       role="radio"
       aria-checked={selected}
@@ -186,21 +188,20 @@ function SelectPill({ label, description, selected, onClick, motionSafe }) {
       style={{
         padding: '12px 14px',
         borderRadius: 'var(--radius-md)',
-        border: `1px solid ${selected ? 'var(--border-neon)' : 'var(--border-glass)'}`,
-        background: selected ? 'rgba(0,245,255,0.08)' : 'var(--bg-inset)',
-        boxShadow: selected ? '0 0 0 1px rgba(0,245,255,0.18)' : 'none',
+        border: `1px solid ${selected ? 'var(--accent)' : 'var(--border-glass)'}`,
+        background: selected ? 'rgba(177,183,192,0.08)' : 'var(--bg-inset)',
+        boxShadow: 'none',
       }}
     >
       <span
         className="font-racing block text-sm font-bold tracking-wide"
-        style={{ color: selected ? 'var(--neon-cyan)' : 'var(--text-secondary)' }}
+        style={{ color: selected ? 'var(--accent)' : 'var(--text-secondary)' }}
       >
         {label}
       </span>
       {description && (
         <span
-          className="mt-0.5 block text-[11px] leading-snug"
-          style={{ color: 'var(--text-muted)' }}
+          className="difficulty-help block"
         >
           {description}
         </span>

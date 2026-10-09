@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { MAX_ERRORS } from '../utils/typing'
 import { useI18n } from '../i18n'
 
@@ -9,6 +9,7 @@ import { useI18n } from '../i18n'
  * of sync with the race rules — this component only renders it.
  */
 export function ErrorCounter({ errors = 0, shakeTrigger = 0, crashTrigger: _crashTrigger }) {
+  const motionSafe = !useReducedMotion()
   const { t } = useI18n()
   const dots = Array.from({ length: MAX_ERRORS }, (_, i) => i < errors)
 
@@ -16,8 +17,8 @@ export function ErrorCounter({ errors = 0, shakeTrigger = 0, crashTrigger: _cras
     <motion.div
       key={`shake-${shakeTrigger}`}
       animate={shakeTrigger > 0 ? {
-        x: [0, -6, 6, -4, 4, -2, 2, 0],
-        transition: { duration: 0.35 }
+        borderColor: 'var(--danger)',
+        transition: { duration: motionSafe ? 0.18 : 0, ease: 'easeOut' }
       } : {}}
       style={{
         display: 'flex',
@@ -37,7 +38,7 @@ export function ErrorCounter({ errors = 0, shakeTrigger = 0, crashTrigger: _cras
         style={{
           fontSize: '13px',
           fontWeight: 600,
-        color: errors > 0 ? '#ef4444' : 'rgba(255,255,255,0.5)',
+        color: errors > 0 ? 'var(--danger)' : 'rgba(255,255,255,0.5)',
         letterSpacing: '0.08em',
         textTransform: 'uppercase',
       }}>
@@ -49,16 +50,16 @@ export function ErrorCounter({ errors = 0, shakeTrigger = 0, crashTrigger: _cras
             key={i}
             initial={false}
             animate={{
-              scale: filled ? [1, 1.3, 1] : 1,
-              backgroundColor: filled ? '#ef4444' : 'rgba(255,255,255,0.1)',
-              boxShadow: filled ? '0 0 8px rgba(239,68,68,0.6)' : 'none',
+              scale: 1,
+              backgroundColor: filled ? 'var(--danger)' : 'rgba(255,255,255,0.1)',
+              boxShadow: 'none',
             }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: motionSafe ? 0.18 : 0, ease: 'easeOut' }}
             style={{
               width: '10px',
               height: '10px',
               borderRadius: '50%',
-              border: `1px solid ${filled ? '#ef4444' : 'rgba(255,255,255,0.2)'}`,
+              border: `1px solid ${filled ? 'var(--danger)' : 'rgba(255,255,255,0.2)'}`,
             }}
           />
         ))}
@@ -66,7 +67,7 @@ export function ErrorCounter({ errors = 0, shakeTrigger = 0, crashTrigger: _cras
       <span style={{
         fontFamily: 'JetBrains Mono, monospace',
         fontSize: '13px',
-        color: errors > 0 ? '#ef4444' : 'rgba(255,255,255,0.4)',
+        color: errors > 0 ? 'var(--danger)' : 'rgba(255,255,255,0.4)',
         fontWeight: 600,
       }}>
         {errors}/{MAX_ERRORS}

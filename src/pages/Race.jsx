@@ -1,3 +1,4 @@
+import { entrance, hoverLift } from '../components/ui/PresentationMotion'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -396,7 +397,7 @@ export default function Race() {
               className="font-racing mt-3 flex flex-wrap items-center gap-2.5 text-[12px] font-semibold uppercase"
               style={{ color: 'var(--text-muted)', letterSpacing: '0.08em' }}
             >
-              <span style={{ color: 'var(--cyan)' }}>
+              <span style={{ color: 'var(--accent)' }}>
                 {labels.roundName(round?.round_number || 1, totalRounds)}
               </span>
               <span style={{ color: 'var(--text-muted)' }}>•</span>
@@ -417,10 +418,8 @@ export default function Race() {
 
         {/* ═══ READY gate — the two competitors, clearly separated ════════ */}
         {phase === 'ready_gate' && (
-          <motion.section
-            initial={motionSafe ? { opacity: 0, y: 18 } : false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45 }}
+          <motion.section data-ui-motion
+            {...entrance(motionSafe, 0)}
             className="panel panel-accent panel-pad-lg mb-10 text-center"
           >
             <h2 className="display-m" style={{ color: 'var(--text-primary)' }}>
@@ -447,9 +446,9 @@ export default function Race() {
               />
             </div>
 
-            <motion.button
-              whileHover={motionSafe && !amReady ? { scale: 1.02 } : undefined}
-              whileTap={motionSafe && !amReady ? { scale: 0.98 } : undefined}
+            <motion.button data-ui-motion
+              whileHover={hoverLift(motionSafe && !amReady)}
+              whileTap={motionSafe && !amReady ? { y: 0, transition: { duration: 0.15, ease: 'easeOut' } } : undefined}
               className="btn-primary btn-xl btn-cta mx-auto mt-10"
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               disabled={amReady}
@@ -468,9 +467,8 @@ export default function Race() {
 
         {/* ═══ Waiting for opponent ════════════════════════════════════════ */}
         {phase === 'waiting' && (
-          <motion.section
-            initial={motionSafe ? { opacity: 0, y: 18 } : false}
-            animate={{ opacity: 1, y: 0 }}
+          <motion.section data-ui-motion
+            {...entrance(motionSafe, 0)}
             className="panel panel-accent panel-pad-lg mb-10 text-center"
           >
             <h2 className="display-m" style={{ color: 'var(--text-primary)' }}>
@@ -483,7 +481,7 @@ export default function Race() {
                   width: 18,
                   height: 18,
                   borderColor: 'var(--border-subtle)',
-                  borderTopColor: 'var(--neon-cyan)',
+                  borderTopColor: 'var(--accent)',
                 }}
                 aria-hidden="true"
               />
@@ -502,17 +500,12 @@ export default function Race() {
         {(phase === 'racing' || phase === 'waiting') && (
           <>
             {/* ═══ Track — both players, one clear comparison ═══════════════ */}
-            <motion.section
-              animate={crashTrigger > 0 && motionSafe ? {
-                backgroundColor: ['rgba(239,68,68,0)', 'rgba(239,68,68,0.12)', 'rgba(239,68,68,0)'],
-              } : {}}
-              transition={{ duration: 0.6 }}
+            <motion.section data-ui-motion
+              animate={crashTrigger > 0 && motionSafe ? { borderColor: 'var(--danger)' } : { borderColor: 'var(--border-subtle)' }}
+              transition={{ duration: motionSafe ? 0.3 : 0, ease: 'easeOut' }}
               className="panel panel-pad relative mb-8 overflow-hidden"
             >
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 bg-grid-fine opacity-30"
-              />
+
 
               <div className="relative">
                 <div
@@ -568,9 +561,9 @@ export default function Race() {
         {submitError && (
           <div
             className="panel mt-6 p-5"
-            style={{ borderColor: 'rgba(239,68,68,0.35)' }}
+            style={{ borderColor: 'rgba(177,183,192,0.35)' }}
           >
-            <div style={{ color: '#ef4444', fontSize: '13px', marginBottom: '8px' }}>{submitError}</div>
+            <div style={{ color: 'var(--danger)', fontSize: '13px', marginBottom: '8px' }}>{submitError}</div>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {t('race.retryNote')}
             </p>
@@ -622,28 +615,28 @@ function RaceUnavailable() {
 /** One side of the head-to-head on the READY gate. */
 function CompetitorPanel({ name, ready, isMine = false }) {
   const { t } = useI18n()
-  const accent = isMine ? '#00f5ff' : '#8b5cf6'
+  const accent = isMine ? 'var(--accent)' : 'var(--text-secondary)'
 
   return (
     <div
       className="min-w-0 px-3 py-6 sm:px-6 sm:py-8"
       style={{
         borderRadius: 'var(--radius-lg)',
-        background: ready ? 'rgba(16,185,129,0.09)' : 'var(--bg-inset)',
-        border: `1px solid ${ready ? 'rgba(16,185,129,0.38)' : 'var(--border-glass)'}`,
-        boxShadow: ready ? '0 0 34px -16px rgba(16,185,129,0.7)' : 'none',
+        background: ready ? 'rgba(177,183,192,0.09)' : 'var(--bg-inset)',
+        border: `1px solid ${ready ? 'rgba(177,183,192,0.38)' : 'var(--border-glass)'}`,
+        boxShadow: 'none',
       }}
     >
       <div
         className="font-racing overflow-hidden text-ellipsis whitespace-nowrap text-base font-bold sm:text-lg"
-        style={{ color: ready ? '#10b981' : 'var(--text-secondary)' }}
+        style={{ color: ready ? 'var(--success)' : 'var(--text-secondary)' }}
         title={name}
       >
         {name}
       </div>
       <div
         className="font-racing mt-2 text-[10px] font-bold uppercase"
-        style={{ color: ready ? '#10b981' : accent, letterSpacing: '0.14em' }}
+        style={{ color: ready ? 'var(--success)' : accent, letterSpacing: '0.14em' }}
       >
         {ready ? t('labels.matchStatus.ready') : '—'}
       </div>
@@ -662,7 +655,7 @@ function TimeBox({ value }) {
         border: '1px solid var(--border-glass)',
       }}
     >
-      <span className="num text-[26px] font-bold" style={{ color: '#00f5ff' }}>
+      <span className="num text-[26px] font-bold" style={{ color: 'var(--accent)' }}>
         {value}
       </span>
     </div>
@@ -685,34 +678,23 @@ function MatchResultOverlay({
         ? t('race.beatOpponent', { name: opponent })
         : t('race.opponentWins', { name: opponent })
 
-  const glow = iWon ? '16,185,129' : '239,68,68'
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+    <motion.div data-ui-motion
+      {...entrance(motionSafe, 0)}
+      exit={motionSafe ? { opacity: 0 } : undefined}
       className="fixed inset-0 z-40 flex items-center justify-center p-6"
       style={{
         background: 'rgba(5,6,14,0.9)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
       }}
     >
-      <motion.div
-        initial={motionSafe ? { scale: 0.94, y: 24 } : false}
-        animate={{ scale: 1, y: 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+      <motion.div data-ui-motion
+        {...entrance(motionSafe, 0)}
         className="panel panel-accent relative w-full overflow-hidden text-center"
         style={{ padding: 'clamp(30px, 6vw, 52px)', maxWidth: 480 }}
       >
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background: `radial-gradient(460px 260px at 50% 0%, rgba(${glow},0.24), transparent 70%)`,
-          }}
-        />
+
 
         <div className="relative">
           <span className="mb-5 block text-[58px] leading-none" aria-hidden="true">
@@ -724,8 +706,8 @@ function MatchResultOverlay({
             style={{
               fontSize: 'clamp(32px, 7vw, 46px)',
               lineHeight: 1,
-              color: iWon ? '#10b981' : '#ef4444',
-              textShadow: `0 0 34px rgba(${glow},0.5)`,
+              color: iWon ? 'var(--success)' : 'var(--danger)',
+              textShadow: 'none',
             }}
           >
             {iWon ? t('race.victory') : t('race.defeat')}
@@ -741,9 +723,9 @@ function MatchResultOverlay({
             </div>
           )}
 
-          <motion.button
-            whileHover={motionSafe ? { scale: 1.02 } : undefined}
-            whileTap={motionSafe ? { scale: 0.98 } : undefined}
+          <motion.button data-ui-motion
+            whileHover={hoverLift(motionSafe)}
+            whileTap={motionSafe ? { y: 0, transition: { duration: 0.15, ease: 'easeOut' } } : undefined}
             className="btn-primary btn-xl btn-cta mt-9"
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={() => onNavigate(target, { replace: true })}

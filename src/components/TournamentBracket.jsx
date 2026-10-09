@@ -1,3 +1,4 @@
+import { stagger, listItem, hoverLift } from './ui/PresentationMotion'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useI18n, useLabels } from '../i18n'
 
@@ -48,15 +49,16 @@ export function TournamentBracket({ rounds = [], currentRound = 1, myPlayerId })
 }
 
 function RoundColumn({ round, roundIndex, totalRounds, isActive, isPending, isDone, myPlayerId }) {
+  const motionSafe = !useReducedMotion()
   const { t } = useI18n()
   const labels = useLabels()
   const matches = round.matches || []
   const spacingFactor = Math.pow(2, roundIndex)
 
   const accent = isActive
-    ? 'var(--neon-cyan)'
+    ? 'var(--accent)'
     : isPending
-      ? 'var(--neon-yellow)'
+      ? 'var(--warning)'
       : isDone
         ? 'var(--text-secondary)'
         : 'var(--text-muted)'
@@ -85,9 +87,9 @@ function RoundColumn({ round, roundIndex, totalRounds, isActive, isPending, isDo
             style={{
               width: 6,
               height: 6,
-              background: 'var(--neon-cyan)',
+              background: 'var(--accent)',
               borderRadius: '50%',
-              boxShadow: '0 0 8px rgba(0,245,255,0.8)',
+              boxShadow: 'none',
             }}
             aria-hidden="true"
           />
@@ -96,7 +98,7 @@ function RoundColumn({ round, roundIndex, totalRounds, isActive, isPending, isDo
         {isPending && (
           <span
             className="mt-1 block text-[9px] uppercase tracking-[0.12em]"
-            style={{ color: 'rgba(245,158,11,0.75)' }}
+            style={{ color: 'rgba(177,183,192,0.75)' }}
           >
             {t('bracket.waitingForHost')}
           </span>
@@ -104,7 +106,7 @@ function RoundColumn({ round, roundIndex, totalRounds, isActive, isPending, isDo
       </div>
 
       {/* Matches */}
-      <div
+      <motion.div {...stagger(motionSafe, true)}
         style={{
           display: 'flex',
           flexDirection: 'column',
@@ -122,7 +124,7 @@ function RoundColumn({ round, roundIndex, totalRounds, isActive, isPending, isDo
             isMine={match.player1_id === myPlayerId || match.player2_id === myPlayerId}
           />
         ))}
-      </div>
+      </motion.div>
     </div>
   )
 }
@@ -142,16 +144,14 @@ function MatchCard({ match, isActive, isPending, isMine }) {
   const seedOf = (tp) => (tp?.seed ? `#${tp.seed}` : null)
 
   return (
-    <motion.div
-      initial={motionSafe ? { opacity: 0, scale: 0.94 } : false}
-      animate={{ opacity: 1, scale: 1 }}
+    <motion.div data-ui-motion variants={listItem(motionSafe)} whileHover={hoverLift(motionSafe)}
       style={{
         background: isMine
-          ? 'rgba(0,245,255,0.07)'
+          ? 'rgba(177,183,192,0.07)'
           : isActive
             ? 'var(--bg-inset)'
             : 'rgba(255,255,255,0.018)',
-        border: `1px solid ${isMine ? 'rgba(0,245,255,0.32)' : 'var(--border-glass)'}`,
+        border: `1px solid ${isMine ? 'rgba(177,183,192,0.32)' : 'var(--border-glass)'}`,
         borderRadius: 'var(--radius-sm)',
         overflow: 'hidden',
         opacity: isPending ? 0.72 : 1,
@@ -170,7 +170,7 @@ function MatchCard({ match, isActive, isPending, isMine }) {
           />
           <div
             className="font-racing mt-1.5 text-[10px] font-bold uppercase tracking-[0.12em]"
-            style={{ color: 'rgba(0,245,255,0.7)' }}
+            style={{ color: 'rgba(177,183,192,0.7)' }}
           >
             {t('bracket.byeAdvances')}
           </div>
@@ -226,11 +226,11 @@ function PlayerSlot({ name, seed, isWinner, isForfeit, tbdLabel }) {
   return (
     <div
       className="flex items-center gap-2 px-3 py-2"
-      style={{ background: isWinner ? 'rgba(16,185,129,0.09)' : 'transparent' }}
+      style={{ background: isWinner ? 'rgba(177,183,192,0.09)' : 'transparent' }}
     >
       {isWinner && <span className="text-[11px]" aria-hidden="true">🏆</span>}
       {seed && (
-        <span className="font-mono text-[10px]" style={{ color: 'rgba(0,245,255,0.5)', minWidth: 18 }}>
+        <span className="font-mono text-[10px]" style={{ color: 'rgba(177,183,192,0.5)', minWidth: 18 }}>
           {seed}
         </span>
       )}
@@ -239,7 +239,7 @@ function PlayerSlot({ name, seed, isWinner, isForfeit, tbdLabel }) {
         style={{
           fontSize: 13,
           fontWeight: isWinner ? 700 : 500,
-          color: isWinner ? '#10b981' : isForfeit ? 'var(--text-muted)' : 'var(--text-primary)',
+          color: isWinner ? 'var(--success)' : isForfeit ? 'var(--text-muted)' : 'var(--text-primary)',
           textDecoration: isForfeit ? 'line-through' : 'none',
         }}
       >
@@ -251,12 +251,12 @@ function PlayerSlot({ name, seed, isWinner, isForfeit, tbdLabel }) {
 
 function statusColor(status) {
   switch (status) {
-    case 'completed': return 'rgba(16,185,129,0.7)'
-    case 'racing': return '#00f5ff'
-    case 'ready': return '#10b981'
+    case 'completed': return 'rgba(177,183,192,0.7)'
+    case 'racing': return 'var(--accent)'
+    case 'ready': return 'var(--success)'
     case 'waiting_players': return 'var(--text-muted)'
-    case 'upcoming': return 'rgba(245,158,11,0.75)'
-    case 'forfeit': return 'rgba(239,68,68,0.8)'
+    case 'upcoming': return 'rgba(177,183,192,0.75)'
+    case 'forfeit': return 'rgba(177,183,192,0.8)'
     default: return 'var(--text-muted)'
   }
 }

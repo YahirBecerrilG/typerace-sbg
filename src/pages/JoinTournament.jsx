@@ -1,3 +1,5 @@
+import { FadeMessage } from '../components/ui/PresentationMotion'
+import { hoverLift } from '../components/ui/PresentationMotion'
 import { useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
@@ -36,50 +38,43 @@ export default function JoinTournament() {
 
   return (
     <FormLayout title={t('join.title')} subtitle={t('join.subtitle')}>
-      <span
-        className="mb-8 grid h-14 w-14 place-items-center rounded-2xl"
-        style={{
-          background: 'rgba(139,92,246,0.12)',
-          border: '1px solid var(--border-violet)',
-          color: 'var(--violet)',
-        }}
-        aria-hidden="true"
-      >
-        <Hash size={26} />
-      </span>
-
       <form onSubmit={handleJoin} className="flex flex-col gap-5">
         <div>
-          <label className="sr-only" htmlFor="tournament-code">
+          <label className="field-label" htmlFor="tournament-code">
             {t('shareCode.copyLabel')}
           </label>
-          <input
-            id="tournament-code"
-            className="input-field font-mono"
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            placeholder={t('join.placeholder')}
-            maxLength={7}
-            autoFocus
-            aria-invalid={error ? 'true' : undefined}
-            style={{
-              textAlign: 'center',
-              fontSize: '24px',
-              fontWeight: 700,
-              letterSpacing: '0.15em',
-              padding: '20px',
-            }}
-          />
+          <div className="join-code-row">
+            <span className="join-code-icon" aria-hidden="true">
+              <Hash size={26} />
+            </span>
+            <input
+              id="tournament-code"
+              className="input-field font-mono"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder={t('join.placeholder')}
+              maxLength={7}
+              autoFocus
+              aria-invalid={error ? 'true' : undefined}
+              style={{
+                textAlign: 'center',
+                fontSize: '24px',
+                fontWeight: 700,
+                letterSpacing: '0.15em',
+                padding: '20px',
+              }}
+            />
+          </div>
           {error && (
-            <p className="field-error text-center" role="alert">
+            <FadeMessage className="field-error text-center" role="alert">
               {error}
-            </p>
+            </FadeMessage>
           )}
         </div>
 
-        <motion.button
-          whileHover={motionSafe && !loading ? { scale: 1.02 } : undefined}
-          whileTap={motionSafe && !loading ? { scale: 0.98 } : undefined}
+        <motion.button data-ui-motion
+          whileHover={hoverLift(motionSafe && !loading)}
+          whileTap={motionSafe && !loading ? { y: 0, transition: { duration: 0.15, ease: 'easeOut' } } : undefined}
           type="submit"
           className="btn-primary btn-block"
           disabled={loading}

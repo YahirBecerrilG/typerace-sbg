@@ -14,59 +14,37 @@ export function Footer() {
   const { t } = useI18n()
 
   return (
-    <footer className="relative overflow-hidden" style={{ borderTop: '1px solid var(--border-glass)' }}>
+    <footer className="site-footer relative overflow-hidden" style={{ borderTop: '1px solid var(--border-glass)' }}>
       {/* Faint grid so the bar shares the backdrop's language. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-grid-fine"
-        style={{ opacity: 0.5 }}
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-40"
-        style={{
-          background: 'radial-gradient(ellipse 70% 100% at 50% 100%, rgba(139,92,246,0.1), transparent 70%)',
-        }}
-      />
 
-      <div className="shell relative py-12">
-        <div className="flex flex-col gap-10 md:flex-row md:items-end md:justify-between">
+
+
+      <div className="shell footer-inner relative">
+        <div className="footer-layout">
           <div>
             <Brand size="lg" showByline={false} />
             <p
-              className="measure-tight mt-5 max-w-md text-[13px] leading-relaxed"
-              style={{ color: 'var(--text-muted)' }}
+              className="footer-description measure-tight max-w-md"
             >
               {t('home.subtitle')}
             </p>
           </div>
 
-          <div className="flex flex-col items-start gap-2 md:items-end">
+          <div className="footer-credit">
             {/* Secondary branding: present, elegant, never the loudest thing. */}
             <span
-              className="font-racing text-base font-bold uppercase"
-              style={{ color: 'var(--text-secondary)', letterSpacing: '0.3em' }}
+              className="footer-community font-racing text-base font-bold uppercase"
             >
               {t('brand.footer')}
             </span>
             <span
-              className="text-[10.5px] uppercase"
-              style={{ color: 'var(--text-muted)', letterSpacing: '0.18em' }}
+              className="footer-program uppercase"
             >
               {t('brand.program')}
             </span>
           </div>
         </div>
 
-        <hr className="rule mt-10" />
-
-        <div
-          className="mt-6 flex flex-col items-start justify-between gap-2 text-[10.5px] uppercase sm:flex-row sm:items-center"
-          style={{ color: 'var(--text-muted)', letterSpacing: '0.16em' }}
-        >
-          <span>{t('brand.footer')}</span>
-          <span>{t('brand.program')}</span>
-        </div>
       </div>
     </footer>
   )

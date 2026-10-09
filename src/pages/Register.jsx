@@ -1,3 +1,5 @@
+import { FadeMessage } from '../components/ui/PresentationMotion'
+import { entrance, hoverLift } from '../components/ui/PresentationMotion'
 import { useId, useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
@@ -9,6 +11,7 @@ import { AppShell } from '../components/ui/AppShell'
 import { Brand } from '../components/ui/Brand'
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher'
 import { Footer } from '../components/ui/Footer'
+import { PasswordGuidance, PasswordVisibility } from '../components/ui/PasswordPresentation'
 
 export default function Register() {
   const { register } = useAuth()
@@ -73,9 +76,10 @@ export default function Register() {
           placeholder={t('auth.passwordPlaceholder')}
           error={errors.password}
         />
-        <motion.button
-          whileHover={motionSafe && !loading ? { scale: 1.02 } : undefined}
-          whileTap={motionSafe && !loading ? { scale: 0.98 } : undefined}
+        <PasswordGuidance password={form.password} />
+        <motion.button data-ui-motion
+          whileHover={hoverLift(motionSafe && !loading)}
+          whileTap={motionSafe && !loading ? { y: 0, transition: { duration: 0.15, ease: 'easeOut' } } : undefined}
           type="submit"
           className="btn-primary btn-block"
           disabled={loading}
@@ -87,7 +91,7 @@ export default function Register() {
           {t('auth.hasAccount')}{' '}
           <Link
             to="/login"
-            style={{ color: 'var(--neon-cyan)', textDecoration: 'none', fontWeight: 600 }}
+            style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}
           >
             {t('auth.signIn')}
           </Link>
@@ -99,19 +103,18 @@ export default function Register() {
 
 // ─── Shared Auth Layout ──────────────────────────────────────────────────────
 export function AuthLayout({ title, subtitle, children }) {
+  const motionSafe = !useReducedMotion()
   return (
     <AppShell width="panel">
-      <header className="flex items-center justify-between py-6">
+      <header className="form-header flex items-center justify-between">
         <Brand size="sm" />
         <LanguageSwitcher />
       </header>
 
-      <main className="flex min-h-[70vh] items-center justify-center py-6">
-        <motion.div
-          initial={undefined}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45 }}
-          className="glass-card hairline-top w-full"
+      <main className="form-main flex min-h-[70vh] items-center justify-center">
+        <motion.div data-ui-motion
+          {...entrance(motionSafe, 0)}
+          className="auth-card glass-card hairline-top w-full"
           style={{ padding: 'clamp(26px, 5vw, 40px)' }}
         >
           <h1
@@ -143,21 +146,23 @@ export function Field({ label, type = 'text', value, onChange, placeholder, erro
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
-      <input
-        id={id}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        autoFocus={autoFocus}
-        className="input-field"
-        aria-invalid={error ? 'true' : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-      />
+      <PasswordVisibility>
+        <input
+          id={id}
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          autoFocus={autoFocus}
+          className="input-field"
+          aria-invalid={error ? 'true' : undefined}
+          aria-describedby={error ? `${id}-error` : undefined}
+        />
+      </PasswordVisibility>
       {error && (
-        <p id={`${id}-error`} className="field-error" role="alert">
+        <FadeMessage id={`${id}-error`} className="field-error" role="alert">
           {error}
-        </p>
+        </FadeMessage>
       )}
     </div>
   )

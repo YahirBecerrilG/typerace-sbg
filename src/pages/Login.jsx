@@ -1,3 +1,4 @@
+import { hoverLift } from '../components/ui/PresentationMotion'
 import { useState } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -60,9 +61,9 @@ export default function Login() {
           onChange={(v) => setForm((f) => ({ ...f, password: v }))}
           placeholder={t('auth.passwordPlaceholder')}
         />
-        <motion.button
-          whileHover={motionSafe && !loading ? { scale: 1.02 } : undefined}
-          whileTap={motionSafe && !loading ? { scale: 0.98 } : undefined}
+        <motion.button data-ui-motion
+          whileHover={hoverLift(motionSafe && !loading)}
+          whileTap={motionSafe && !loading ? { y: 0, transition: { duration: 0.15, ease: 'easeOut' } } : undefined}
           type="submit"
           className="btn-primary btn-block"
           disabled={loading}
@@ -74,7 +75,7 @@ export default function Login() {
           {t('auth.noAccount')}{' '}
           <Link
             to="/register"
-            style={{ color: 'var(--neon-cyan)', textDecoration: 'none', fontWeight: 600 }}
+            style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}
           >
             {t('auth.createOne')}
           </Link>

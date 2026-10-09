@@ -34,7 +34,7 @@ export default function TournamentUnavailable({ error, title }) {
         </p>
 
         {error?.code && (
-          <p className="font-mono mt-3 text-xs" style={{ color: '#ef4444' }}>
+          <p className="font-mono mt-3 text-xs" style={{ color: 'var(--danger)' }}>
             {error.code}
           </p>
         )}

@@ -1,3 +1,5 @@
+import { stagger, listItem } from '../components/ui/PresentationMotion'
+import { entrance, hoverLift } from '../components/ui/PresentationMotion'
 import { useState, useEffect, useCallback } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
@@ -109,25 +111,11 @@ export default function Dashboard() {
       <main className="pb-24">
         {/* ═══ Welcome hero ═══════════════════════════════════════════════ */}
         <section className="relative overflow-hidden pb-14 pt-14 lg:pb-20 lg:pt-20">
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-            <div className="bg-grid-fade absolute inset-x-0 top-0 h-full opacity-70" />
-            <div
-              className="aurora"
-              style={{
-                top: '-40%',
-                left: '30%',
-                width: 620,
-                height: 620,
-                background: 'radial-gradient(circle, rgba(139,92,246,0.18), transparent 66%)',
-              }}
-            />
-          </div>
+
 
           <div className="relative">
-            <motion.div
-              initial={motionSafe ? { opacity: 0, y: 22 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55 }}
+            <motion.div data-ui-motion
+              {...entrance(motionSafe, 0)}
             >
               <Badge tone="ok" dot>
                 {t('dashboard.online')}
@@ -135,24 +123,22 @@ export default function Dashboard() {
 
               <h1 className="display-l mt-6">
                 {t('dashboard.greeting')}{' '}
-                <span className="gradient-text">{displayName}</span>
+                <span className="text-heading">{displayName}</span>
               </h1>
 
               <p className="lede measure mt-5">{t('dashboard.subtitle')}</p>
             </motion.div>
 
             {/* Real counts, straight from what was fetched. */}
-            <motion.dl
-              initial={motionSafe ? { opacity: 0, y: 18 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.12 }}
-              className="mt-12 grid grid-cols-2 gap-px sm:grid-cols-4"
+            <motion.dl data-ui-motion
+              {...stagger(motionSafe)}
+              className="dashboard-stats grid grid-cols-2 gap-px sm:grid-cols-4"
               style={{ background: 'var(--border-glass)', border: '1px solid var(--border-glass)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}
             >
               <Metric label={t('dashboard.statTotal')} value={entries.length} />
-              <Metric label={t('dashboard.statHosting')} value={hosting.length} accent="#f59e0b" />
-              <Metric label={t('dashboard.statPlaying')} value={playing.length} accent="#00f5ff" />
-              <Metric label={t('dashboard.statLive')} value={liveCount} accent="#8b5cf6" />
+              <Metric label={t('dashboard.statHosting')} value={hosting.length} accent="var(--text-primary)" />
+              <Metric label={t('dashboard.statPlaying')} value={playing.length} accent="var(--text-primary)" />
+              <Metric label={t('dashboard.statLive')} value={liveCount} accent="var(--text-primary)" />
             </motion.dl>
           </div>
         </section>
@@ -160,35 +146,25 @@ export default function Dashboard() {
         {/* ═══ Primary actions — asymmetric ═══════════════════════════════ */}
         <section className="pb-20">
           <div className="grid gap-5 lg:grid-cols-12">
-            <motion.button
+            <motion.button data-ui-motion
               type="button"
-              initial={motionSafe ? { opacity: 0, y: 22 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.08 }}
-              whileHover={motionSafe ? { y: -5 } : undefined}
+              {...entrance(motionSafe, 0)}
+              whileHover={hoverLift(motionSafe)}
               onClick={() => navigate('/create-tournament')}
-              className="panel panel-accent group relative overflow-hidden p-8 text-left lg:col-span-7 lg:p-11"
-              style={{ cursor: 'pointer', borderColor: 'rgba(0,245,255,0.22)' }}
+              className="dashboard-action panel panel-accent group relative overflow-hidden text-left lg:col-span-7"
+              style={{ cursor: 'pointer', borderColor: 'rgba(177,183,192,0.22)' }}
             >
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0"
-                style={{
-                  background:
-                    'radial-gradient(560px 300px at 100% 0%, rgba(0,245,255,0.16), transparent 68%),' +
-                    'radial-gradient(460px 280px at 0% 100%, rgba(139,92,246,0.14), transparent 68%)',
-                }}
-              />
+
 
               <div className="relative flex h-full flex-col">
                 <span
                   className="grid h-14 w-14 place-items-center"
                   style={{
                     borderRadius: 'var(--radius-lg)',
-                    background: 'linear-gradient(135deg, rgba(0,245,255,0.22), rgba(139,92,246,0.2))',
-                    border: '1px solid rgba(0,245,255,0.34)',
-                    color: '#7df3ff',
-                    boxShadow: '0 0 30px -8px rgba(0,245,255,0.6)',
+                    background: 'var(--bg-card)',
+                    border: '1px solid rgba(177,183,192,0.34)',
+                    color: 'var(--text-primary)',
+                    boxShadow: 'none',
                   }}
                   aria-hidden="true"
                 >
@@ -202,7 +178,7 @@ export default function Dashboard() {
 
                 <span
                   className="mt-9 inline-flex items-center gap-2 font-racing text-sm font-bold uppercase"
-                  style={{ color: 'var(--neon-cyan)', letterSpacing: '0.1em' }}
+                  style={{ color: 'var(--accent)', letterSpacing: '0.1em' }}
                 >
                   {t('dashboard.createCta')}
                   <ArrowUpRight
@@ -214,32 +190,24 @@ export default function Dashboard() {
               </div>
             </motion.button>
 
-            <motion.button
+            <motion.button data-ui-motion
               type="button"
-              initial={motionSafe ? { opacity: 0, y: 22 } : false}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.16 }}
-              whileHover={motionSafe ? { y: -5 } : undefined}
+              {...entrance(motionSafe, 1)}
+              whileHover={hoverLift(motionSafe)}
               onClick={() => navigate('/join-tournament')}
-              className="panel group relative overflow-hidden p-8 text-left lg:col-span-5 lg:p-11"
+              className="dashboard-action panel group relative overflow-hidden text-left lg:col-span-5"
               style={{ cursor: 'pointer' }}
             >
-              <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0"
-                style={{
-                  background: 'radial-gradient(420px 260px at 0% 0%, rgba(139,92,246,0.14), transparent 70%)',
-                }}
-              />
+
 
               <div className="relative flex h-full flex-col">
                 <span
                   className="grid h-14 w-14 place-items-center"
                   style={{
                     borderRadius: 'var(--radius-lg)',
-                    background: 'rgba(139,92,246,0.14)',
-                    border: '1px solid rgba(139,92,246,0.3)',
-                    color: '#c4b5fd',
+                    background: 'rgba(177,183,192,0.14)',
+                    border: '1px solid rgba(177,183,192,0.3)',
+                    color: 'var(--text-secondary)',
                   }}
                   aria-hidden="true"
                 >
@@ -253,7 +221,7 @@ export default function Dashboard() {
 
                 <span
                   className="mt-auto block pt-9 font-racing text-sm font-bold uppercase"
-                  style={{ color: 'var(--violet)', letterSpacing: '0.1em' }}
+                  style={{ color: 'var(--text-secondary)', letterSpacing: '0.1em' }}
                 >
                   {t('dashboard.joinCta')}
                 </span>
@@ -284,7 +252,7 @@ export default function Dashboard() {
                 <TournamentGroup
                   title={t('dashboard.hosting')}
                   hint={t('dashboard.hostingHint')}
-                  color="#f59e0b"
+                  color="var(--warning)"
                   entries={hosting}
                   labels={labels}
                   motionSafe={motionSafe}
@@ -294,7 +262,7 @@ export default function Dashboard() {
                 <TournamentGroup
                   title={t('dashboard.playing')}
                   hint={t('dashboard.playingHint')}
-                  color="#00f5ff"
+                  color="var(--accent)"
                   entries={playing}
                   labels={labels}
                   motionSafe={motionSafe}
@@ -310,16 +278,17 @@ export default function Dashboard() {
 
 // ─── Hero metric ────────────────────────────────────────────────────────────
 function Metric({ label, value, accent = 'var(--text-primary)' }) {
+  const motionSafe = !useReducedMotion()
   return (
-    <div className="p-6" style={{ background: 'rgba(10,14,26,0.8)' }}>
+    <motion.div data-ui-motion variants={listItem(motionSafe)} className="dashboard-metric" style={{ background: 'var(--bg-card)' }}>
       <dt className="label-xs">{label}</dt>
       <dd
         className="metric-value metric-lg mt-3"
-        style={{ color: accent, margin: 0 }}
+        style={{ color: accent }}
       >
         {value}
       </dd>
-    </div>
+    </motion.div>
   )
 }
 
@@ -350,7 +319,7 @@ function TournamentGroup({ title, hint, color, entries, labels, motionSafe }) {
         </span>
       </div>
 
-      <div className="flex flex-col gap-2.5">
+      <motion.div {...stagger(motionSafe)} className="flex flex-col gap-2.5">
         {entries.map((e) => (
           <TournamentRow
             key={e.tournament.id}
@@ -363,7 +332,7 @@ function TournamentGroup({ title, hint, color, entries, labels, motionSafe }) {
             onClick={() => navigate(routeFor(e.tournament))}
           />
         ))}
-      </div>
+      </motion.div>
     </div>
   )
 }
@@ -390,9 +359,9 @@ function TournamentRow({ tournament, onClick, isAdmin, myStatus, placement, labe
   const hostLabel = t('common.host')
 
   return (
-    <motion.button
+    <motion.button data-ui-motion variants={listItem(motionSafe)}
       type="button"
-      whileHover={motionSafe ? { x: 6 } : undefined}
+      whileHover={hoverLift(motionSafe)}
       onClick={onClick}
       className="surface group flex w-full items-center justify-between gap-5 text-left transition-colors hover:border-[var(--border-strong)]"
       style={{ padding: '19px 22px', cursor: 'pointer' }}
@@ -413,8 +382,8 @@ function TournamentRow({ tournament, onClick, isAdmin, myStatus, placement, labe
           <span
             className="num shrink-0 text-[11px]"
             style={{
-              color: 'var(--neon-cyan)',
-              background: 'rgba(0,245,255,0.08)',
+              color: 'var(--accent)',
+              background: 'rgba(177,183,192,0.08)',
               padding: '3px 9px',
               borderRadius: '5px',
               letterSpacing: '0.08em',

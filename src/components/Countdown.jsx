@@ -4,10 +4,10 @@ import { useI18n } from '../i18n'
 
 const STEPS = [3, 2, 1, 'GO!']
 const STEP_COLORS = {
-  3: '#ef4444',
-  2: '#f59e0b',
-  1: '#10b981',
-  'GO!': '#00f5ff',
+  3: 'var(--text-primary)',
+  2: 'var(--text-primary)',
+  1: 'var(--text-primary)',
+  'GO!': 'var(--accent)',
 }
 
 /**
@@ -43,15 +43,16 @@ export function Countdown({ onComplete }) {
   }, [onComplete])
 
   const current = STEPS[stepIndex]
-  const color = STEP_COLORS[current] || '#00f5ff'
+  const color = STEP_COLORS[current] || 'var(--accent)'
 
   return (
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={motionSafe ? { opacity: 0 } : false}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          exit={motionSafe ? { opacity: 0 } : undefined}
+          transition={{ duration: motionSafe ? 0.3 : 0, ease: 'easeOut' }}
           style={{
             position: 'fixed',
             inset: 0,
@@ -60,16 +61,16 @@ export function Countdown({ onComplete }) {
             alignItems: 'center',
             justifyContent: 'center',
             background: 'rgba(8,11,20,0.85)',
-            backdropFilter: 'blur(8px)',
+            backdropFilter: 'none',
           }}
         >
           <AnimatePresence mode="wait">
             <motion.div
               key={stepIndex}
-              initial={motionSafe ? { scale: 2, opacity: 0 } : false}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={motionSafe ? { scale: 0.5, opacity: 0 } : { opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              initial={motionSafe ? { opacity: 0, y: 12 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              exit={motionSafe ? { opacity: 0 } : undefined}
+              transition={{ duration: motionSafe ? 0.3 : 0, ease: 'easeOut' }}
               style={{ textAlign: 'center' }}
             >
               <div
@@ -78,7 +79,7 @@ export function Countdown({ onComplete }) {
                   fontSize: 'clamp(80px, 15vw, 140px)',
                   fontWeight: 900,
                   color,
-                  textShadow: `0 0 60px ${color}, 0 0 120px ${color}`,
+                  textShadow: 'none',
                   lineHeight: 1,
                   letterSpacing: '-0.02em',
                 }}

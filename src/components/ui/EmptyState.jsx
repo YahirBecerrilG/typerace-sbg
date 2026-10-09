@@ -1,3 +1,5 @@
+import { motion, useReducedMotion } from 'framer-motion'
+import { entrance } from './PresentationMotion'
 /**
  * Generic empty / unavailable state.
  *
@@ -6,9 +8,10 @@
  * slightly different text blocks.
  */
 export function EmptyState({ icon, title, body, action }) {
+  const motionSafe = !useReducedMotion()
   return (
-    <div
-      className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center"
+    <motion.div {...entrance(motionSafe)}
+      className="empty-state flex flex-col items-center justify-center text-center"
       style={{
         background: 'var(--bg-inset)',
         border: '1px dashed var(--border-subtle)',
@@ -21,9 +24,9 @@ export function EmptyState({ icon, title, body, action }) {
           style={{
             width: 44,
             height: 44,
-            background: 'rgba(0,245,255,0.07)',
+            background: 'rgba(177,183,192,0.07)',
             border: '1px solid var(--border-subtle)',
-            color: 'var(--cyan)',
+            color: 'var(--text-secondary)',
           }}
           aria-hidden="true"
         >
@@ -45,6 +48,6 @@ export function EmptyState({ icon, title, body, action }) {
       )}
 
       {action}
-    </div>
+    </motion.div>
   )
 }

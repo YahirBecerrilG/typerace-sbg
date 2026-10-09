@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from 'framer-motion'
 import { useRef } from 'react'
 
-const COLORS = ['#00f5ff', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#f97316', '#06b6d4', '#ef4444']
+const COLORS = ['var(--accent)', 'var(--text-primary)', 'var(--text-secondary)', 'var(--border-strong)', 'var(--text-primary)', 'var(--text-secondary)', 'var(--border-strong)', 'var(--accent)']
 
 /**
  * Celebration burst for the winner screen.
@@ -36,28 +36,15 @@ export function Confetti({ count = 80 }) {
 
   return (
     <div
-      style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 100, overflow: 'hidden' }}
+      style={{ display: 'none', position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 100, overflow: 'hidden' }}
       aria-hidden="true"
     >
       {pieces.map((p) => (
         <motion.div
           key={p.id}
-          initial={motionSafe ? { y: -20, x: 0, rotate: 0, opacity: 1 } : false}
-          animate={
-            motionSafe
-              ? {
-                  y: '110vh',
-                  x: [p.drift],
-                  rotate: p.rotate + 720,
-                  opacity: [1, 1, 0],
-                }
-              : { opacity: 0.9 }
-          }
-          transition={{
-            duration: p.duration,
-            delay: p.delay,
-            ease: 'linear',
-          }}
+          initial={false}
+          animate={{ opacity: 0 }}
+          transition={{ duration: 0 }}
           style={{
             position: 'absolute',
             left: p.left,
@@ -66,7 +53,7 @@ export function Confetti({ count = 80 }) {
             height: p.size,
             background: p.color,
             borderRadius: p.round ? '50%' : '2px',
-            boxShadow: `0 0 6px ${p.color}`,
+            boxShadow: 'none',
           }}
         />
       ))}

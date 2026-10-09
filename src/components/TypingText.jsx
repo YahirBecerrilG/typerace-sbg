@@ -47,7 +47,7 @@ export function TypingText({ phrase, typedText, currentIndex, scale = 'md' }) {
         background: 'rgba(0,0,0,0.32)',
         borderRadius: 'var(--radius-lg)',
         border: '1px solid var(--border-glass)',
-        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+        boxShadow: 'none',
       }}
     >
       {charStates.map(({ char, state }, idx) => (
@@ -60,21 +60,21 @@ export function TypingText({ phrase, typedText, currentIndex, scale = 'md' }) {
 function CharacterSpan({ char, state }) {
   const styles = {
     pending: {
-      color: '#475569',
+      color: 'var(--text-muted)',
     },
     correct: {
-      color: '#10b981',
+      color: 'var(--success)',
     },
     incorrect: {
-      color: '#ef4444',
-      backgroundColor: 'rgba(239,68,68,0.15)',
+      color: 'var(--danger)',
+      backgroundColor: 'rgba(177,183,192,0.15)',
       borderRadius: '2px',
       textDecoration: 'underline',
-      textDecorationColor: '#ef4444',
+      textDecorationColor: 'var(--danger)',
     },
     current: {
-      color: '#f1f5f9',
-      borderBottom: '2px solid #00f5ff',
+      color: 'var(--text-primary)',
+      borderBottom: '2px solid var(--accent)',
       animation: 'blink 1s ease-in-out infinite',
     },
   }

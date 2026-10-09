@@ -1,25 +1,25 @@
 import { motion } from 'framer-motion'
 
 const CAR_COLORS = [
-  { body: '#00f5ff', glow: 'rgba(0,245,255,0.6)', stripe: '#0099cc' },
-  { body: '#8b5cf6', glow: 'rgba(139,92,246,0.6)', stripe: '#6d28d9' },
-  { body: '#10b981', glow: 'rgba(16,185,129,0.6)', stripe: '#059669' },
-  { body: '#f59e0b', glow: 'rgba(245,158,11,0.6)', stripe: '#d97706' },
-  { body: '#ec4899', glow: 'rgba(236,72,153,0.6)', stripe: '#db2777' },
-  { body: '#f97316', glow: 'rgba(249,115,22,0.6)', stripe: '#ea580c' },
-  { body: '#06b6d4', glow: 'rgba(6,182,212,0.6)', stripe: '#0891b2' },
-  { body: '#a855f7', glow: 'rgba(168,85,247,0.6)', stripe: '#9333ea' },
+  { body: 'var(--accent)', glow: 'var(--border-strong)', stripe: 'var(--bg-secondary)' },
+  { body: 'var(--text-secondary)', glow: 'var(--border-strong)', stripe: 'var(--bg-secondary)' },
+  { body: 'var(--text-secondary)', glow: 'var(--border-strong)', stripe: 'var(--bg-secondary)' },
+  { body: 'var(--text-secondary)', glow: 'var(--border-strong)', stripe: 'var(--bg-secondary)' },
+  { body: 'var(--text-secondary)', glow: 'var(--border-strong)', stripe: 'var(--bg-secondary)' },
+  { body: 'var(--text-secondary)', glow: 'var(--border-strong)', stripe: 'var(--bg-secondary)' },
+  { body: 'var(--text-secondary)', glow: 'var(--border-strong)', stripe: 'var(--bg-secondary)' },
+  { body: 'var(--text-secondary)', glow: 'var(--border-strong)', stripe: 'var(--bg-secondary)' },
 ]
 
 export function Car({ colorIndex = 0, state = 'idle', size = 48 }) {
   const color = CAR_COLORS[colorIndex % CAR_COLORS.length]
 
   const bodyAnimation = state === 'racing'
-    ? { y: [0, -1, 0, 1, 0], transition: { repeat: Infinity, duration: 0.25 } }
+    ? { opacity: 1 }
     : state === 'crashed'
-      ? { rotate: [0, -5, 10, -10, 5, 0], x: [0, -6, 6, -4, 4, 0], transition: { duration: 0.6 } }
+      ? { opacity: 1 }
       : state === 'winner'
-        ? { y: [0, -6, 0], transition: { repeat: Infinity, duration: 0.5 } }
+        ? { opacity: 1 }
         : {}
 
   return (
@@ -31,7 +31,7 @@ export function Car({ colorIndex = 0, state = 'idle', size = 48 }) {
       xmlns="http://www.w3.org/2000/svg"
       animate={bodyAnimation}
       style={{
-        filter: `drop-shadow(0 0 8px ${color.glow})`,
+        filter: 'none',
         flexShrink: 0,
       }}
     >
@@ -57,19 +57,19 @@ export function Car({ colorIndex = 0, state = 'idle', size = 48 }) {
       <rect x="4" y="28" width="88" height="4" rx="1" fill={color.stripe} opacity="0.7" />
 
       {/* Front headlights */}
-      <ellipse cx="88" cy="25" rx="5" ry="4" fill="rgba(255,255,200,0.9)" />
-      <ellipse cx="88" cy="33" rx="5" ry="4" fill="rgba(255,220,0,0.5)" />
+      <ellipse cx="88" cy="25" rx="5" ry="4" fill="rgba(177,183,192,0.9)" />
+      <ellipse cx="88" cy="33" rx="5" ry="4" fill="rgba(177,183,192,0.5)" />
 
       {/* Rear lights */}
-      <ellipse cx="8" cy="25" rx="4" ry="3" fill="rgba(255,50,50,0.9)" />
-      <ellipse cx="8" cy="33" rx="4" ry="3" fill="rgba(255,50,50,0.6)" />
+      <ellipse cx="8" cy="25" rx="4" ry="3" fill="rgba(177,183,192,0.9)" />
+      <ellipse cx="8" cy="33" rx="4" ry="3" fill="rgba(177,183,192,0.6)" />
 
       {/* Front wheel */}
-      <circle cx="72" cy="40" r="6" fill="#1a1a2e" stroke={color.body} strokeWidth="2" />
+      <circle cx="72" cy="40" r="6" fill="var(--bg-deep)" stroke={color.body} strokeWidth="2" />
       <circle cx="72" cy="40" r="2.5" fill={color.stripe} />
 
       {/* Rear wheel */}
-      <circle cx="24" cy="40" r="6" fill="#1a1a2e" stroke={color.body} strokeWidth="2" />
+      <circle cx="24" cy="40" r="6" fill="var(--bg-deep)" stroke={color.body} strokeWidth="2" />
       <circle cx="24" cy="40" r="2.5" fill={color.stripe} />
 
       {/* Speed lines (when racing) */}

@@ -58,7 +58,7 @@ export function LanguageSwitcher({ variant = 'ghost', className = '' }) {
           <option
             key={lang.code}
             value={lang.code}
-            style={{ background: '#0b0f1c', color: '#f1f5f9' }}
+            style={{ background: 'var(--bg-card)', color: 'var(--text-primary)' }}
           >
             {lang.flag} {t(lang.labelKey)}
           </option>

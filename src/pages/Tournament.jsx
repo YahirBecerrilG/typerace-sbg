@@ -1,3 +1,4 @@
+import { entrance, hoverLift } from '../components/ui/PresentationMotion'
 import { useState, useEffect, useCallback } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -188,9 +189,8 @@ export default function Tournament() {
 
       <main className="pb-16">
         {/* Header */}
-        <motion.div
-          initial={motionSafe ? { opacity: 0, y: -16 } : false}
-          animate={{ opacity: 1, y: 0 }}
+        <motion.div data-ui-motion
+          {...entrance(motionSafe, 0)}
           className="mb-7"
         >
           <Badge tone={status === 'completed' ? 'warn' : 'ok'} dot className="mb-3">
@@ -208,7 +208,7 @@ export default function Tournament() {
           >
             {totalRounds > 0 && (
               <>
-                <span style={{ color: 'var(--cyan)' }}>
+                <span style={{ color: 'var(--accent)' }}>
                   {labels.roundName(activeRound?.round_number || tournament?.current_round || 1, totalRounds)}
                 </span>
                 <span style={{ color: 'var(--text-muted)' }}>•</span>
@@ -224,7 +224,7 @@ export default function Tournament() {
             {tournament?.bracket_byes > 0 && (
               <>
                 <span style={{ color: 'var(--text-muted)' }}>•</span>
-                <span style={{ color: 'var(--violet)' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>
                   {tournament.bracket_byes === 1
                     ? t('tournament.byeSuffix', { count: tournament.bracket_byes })
                     : t('tournament.byeSuffixPlural', { count: tournament.bracket_byes })}
@@ -237,7 +237,7 @@ export default function Tournament() {
         {/* Your status / CTA */}
         {myStatus?.status === 'eliminated' && (
           <StatusBanner
-            color="var(--neon-red)"
+            color="var(--danger)"
             title={labels.placement(myStatus.placement) || t('labels.playerStatus.eliminated')}
             body={t('tournament.eliminatedBody')}
           />
@@ -248,12 +248,12 @@ export default function Tournament() {
             className="mb-5 flex flex-wrap items-center gap-3.5"
             style={{
               padding: '14px 18px',
-              background: 'rgba(245,158,11,0.07)',
-              border: '1px solid rgba(245,158,11,0.25)',
+              background: 'rgba(177,183,192,0.07)',
+              border: '1px solid rgba(177,183,192,0.25)',
               borderRadius: 'var(--radius-md)',
             }}
           >
-            <Crown size={16} style={{ color: '#f59e0b', flexShrink: 0 }} aria-hidden="true" />
+            <Crown size={16} style={{ color: 'var(--warning)', flexShrink: 0 }} aria-hidden="true" />
             <span className="text-[13px]" style={{ color: 'var(--text-secondary)' }}>
               {t('tournament.hostNotice')}
             </span>
@@ -270,7 +270,7 @@ export default function Tournament() {
 
         {champion && (
           <StatusBanner
-            color="var(--neon-yellow)"
+            color="var(--warning)"
             title={t('tournament.isChampion', { name: champion.profiles?.display_name || t('common.player') })}
             body={t('tournament.championBody')}
             action={{ label: t('tournament.fullResults'), onClick: () => navigate(`/results/${tournamentId}`) }}
@@ -278,9 +278,9 @@ export default function Tournament() {
         )}
 
         {myMatch && (
-          <motion.button
-            whileHover={motionSafe && myRacePath ? { scale: 1.01 } : undefined}
-            whileTap={motionSafe && myRacePath ? { scale: 0.99 } : undefined}
+          <motion.button data-ui-motion
+            whileHover={hoverLift(motionSafe && myRacePath)}
+            whileTap={motionSafe && myRacePath ? { y: 0, transition: { duration: 0.15, ease: 'easeOut' } } : undefined}
             className="btn-primary btn-lg btn-block mb-6"
             onClick={enterMatch}
             disabled={!myRacePath}
@@ -298,8 +298,8 @@ export default function Tournament() {
             className="mb-6 flex flex-wrap items-center gap-4"
             style={{
               padding: '18px 20px',
-              background: 'rgba(245,158,11,0.07)',
-              border: '1px solid rgba(245,158,11,0.25)',
+              background: 'rgba(177,183,192,0.07)',
+              border: '1px solid rgba(177,183,192,0.25)',
               borderRadius: 'var(--radius-md)',
             }}
           >
@@ -325,10 +325,8 @@ export default function Tournament() {
         )}
 
         {/* Bracket */}
-        <motion.section
-          initial={motionSafe ? { opacity: 0, y: 16 } : false}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
+        <motion.section data-ui-motion
+          {...entrance(motionSafe, 0)}
           className="mb-8"
         >
           <SectionTitle>{t('tournament.bracket')}</SectionTitle>
@@ -342,10 +340,8 @@ export default function Tournament() {
         </motion.section>
 
         {/* Standings */}
-        <motion.section
-          initial={motionSafe ? { opacity: 0 } : false}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
+        <motion.section data-ui-motion
+          {...entrance(motionSafe, 0)}
         >
           <SectionTitle>{t('tournament.standings')}</SectionTitle>
           <div className="surface p-2">
@@ -414,13 +410,14 @@ const STATUS_TONE = {
 
 function StandingsRow({ player, index, isMe, labels }) {
   const { t } = useI18n()
+  const motionSafe = !useReducedMotion()
 
   return (
-    <div
+    <motion.div {...entrance(motionSafe, index)}
       className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2.5"
       style={{
         borderRadius: 'var(--radius-sm)',
-        background: isMe ? 'rgba(0,245,255,0.05)' : 'transparent',
+        background: isMe ? 'rgba(177,183,192,0.05)' : 'transparent',
       }}
     >
       <span className="font-mono text-[12px]" style={{ color: 'var(--text-muted)', minWidth: 22 }}>
@@ -435,7 +432,7 @@ function StandingsRow({ player, index, isMe, labels }) {
         {isMe && (
           <span
             className="ml-2 text-[10px] font-bold tracking-[0.14em]"
-            style={{ color: 'var(--neon-cyan)' }}
+            style={{ color: 'var(--accent)' }}
           >
             {t('common.youShort')}
           </span>
@@ -457,6 +454,6 @@ function StandingsRow({ player, index, isMe, labels }) {
       <Badge tone={STATUS_TONE[player.status] || 'neutral'} style={{ marginLeft: 'auto' }}>
         {labels.placement(player.placement) || labels.playerStatus(player.status)}
       </Badge>
-    </div>
+    </motion.div>
   )
 }

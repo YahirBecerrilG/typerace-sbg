@@ -1,3 +1,4 @@
+import { entrance, hoverLift } from '../components/ui/PresentationMotion'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -321,10 +322,10 @@ export default function Practice() {
           <div
             className="mb-6 flex items-center gap-2 px-5 py-3 text-[13px]"
             style={{
-              background: 'rgba(245,158,11,0.08)',
-              border: '1px solid rgba(245,158,11,0.3)',
+              background: 'rgba(177,183,192,0.08)',
+              border: '1px solid rgba(177,183,192,0.3)',
               borderRadius: 'var(--radius-md)',
-              color: '#f59e0b',
+              color: 'var(--warning)',
             }}
             role="status"
           >
@@ -336,24 +337,16 @@ export default function Practice() {
         {/* ═══ The stage: the phrase is the protagonist ═══════════════════ */}
         <section
           className="panel panel-accent relative overflow-hidden"
-          style={{ boxShadow: '0 40px 90px -50px rgba(0,245,255,0.4)' }}
+          style={{ boxShadow: 'none'}}
         >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                'radial-gradient(900px 420px at 50% -10%, rgba(0,245,255,0.11), transparent 68%),' +
-                'radial-gradient(700px 380px at 50% 110%, rgba(139,92,246,0.12), transparent 68%)',
-            }}
-          />
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-grid-fine opacity-40" />
+
+
 
           <div className="relative p-6 sm:p-10 lg:p-14">
             {phase === 'idle' && (
-              <motion.button
-                whileHover={motionSafe ? { scale: 1.02 } : undefined}
-                whileTap={motionSafe ? { scale: 0.98 } : undefined}
+              <motion.button data-ui-motion
+                whileHover={hoverLift(motionSafe)}
+                whileTap={motionSafe ? { y: 0, transition: { duration: 0.15, ease: 'easeOut' } } : undefined}
                 className="btn-primary btn-xl btn-cta"
                 style={{ margin: '0 auto', display: 'flex', alignItems: 'center' }}
                 onClick={() => setPhase('typing')}
@@ -407,14 +400,13 @@ export default function Practice() {
 
           {/* Last completed run, when there is one. */}
           {stats && (
-            <motion.div
-              initial={motionSafe ? { opacity: 0, y: 12 } : false}
-              animate={{ opacity: 1, y: 0 }}
+            <motion.div data-ui-motion
+              {...entrance(motionSafe, 0)}
               className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 px-6 py-5"
               style={{
                 borderRadius: 'var(--radius-lg)',
-                background: 'rgba(16,185,129,0.06)',
-                border: '1px solid rgba(16,185,129,0.22)',
+                background: 'rgba(177,183,192,0.06)',
+                border: '1px solid rgba(177,183,192,0.22)',
               }}
             >
               <SmallStat label={t('practice.lastRun')} value={`${stats.wpm.toFixed(0)} ${t('unit.wpm')}`} />
@@ -439,31 +431,30 @@ export default function Practice() {
               label={t('practice.bestWpm')}
               value={myBest?.best_wpm ? Number(myBest.best_wpm).toFixed(0) : '—'}
               unit={t('unit.wpm')}
-              accent="var(--neon-cyan)"
+              accent="var(--accent)"
             />
             <RecordMetric label={t('practice.runs')} value={myBest?.practice_runs ?? 0} />
             <RecordMetric
               label={t('practice.seedScore')}
               value={myBest?.practice_score ? Number(myBest.practice_score).toFixed(1) : '—'}
-              accent="var(--violet)"
+              accent="var(--text-secondary)"
             />
           </div>
         </section>
 
         <AnimatePresence>
           {isCrashed && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
+            <motion.div data-ui-motion
+              {...entrance(motionSafe, 0)}
+              exit={motionSafe ? { opacity: 0 } : undefined}
               className="font-racing mt-8 text-center font-extrabold tracking-[0.1em]"
               style={{
                 padding: '15px',
-                background: 'rgba(239,68,68,0.1)',
-                border: '1px solid rgba(239,68,68,0.3)',
+                background: 'rgba(177,183,192,0.1)',
+                border: '1px solid rgba(177,183,192,0.3)',
                 borderRadius: 'var(--radius-lg)',
                 fontSize: '16px',
-                color: '#ef4444',
+                color: 'var(--danger)',
               }}
               role="alert"
             >
@@ -489,7 +480,7 @@ function SmallStat({ label, value }) {
 
 function RecordMetric({ label, value, unit, accent = 'var(--text-primary)' }) {
   return (
-    <div className="metric p-7" style={{ background: 'rgba(10,14,26,0.8)' }}>
+    <div className="metric p-7" style={{ background: 'var(--bg-card)' }}>
       <span className="label-xs">{label}</span>
       <span className="metric-value metric-lg mt-3" style={{ color: accent }}>
         {value}

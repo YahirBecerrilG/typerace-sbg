@@ -1,3 +1,4 @@
+import { entrance, hoverLift } from '../components/ui/PresentationMotion'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Radio, Trophy, Octagon, BarChart3 } from 'lucide-react'
@@ -44,81 +45,51 @@ export default function Home() {
     <AppShell width="shell" nav={<TopNav />} footer={<Footer />}>
       <main className="flex flex-col">
         {/* ═══ Hero ═══════════════════════════════════════════════════════ */}
-        <section className="relative overflow-hidden pb-20 pt-12 sm:pt-20 lg:pb-28 lg:pt-28">
+        <section className="home-hero relative overflow-hidden pb-20 pt-12 sm:pt-20 lg:pb-28 lg:pt-28">
           {/* Focal lighting directly behind the headline. */}
-          <div aria-hidden="true" className="pointer-events-none absolute inset-0">
-            <div className="bg-grid-fade absolute inset-x-0 top-0 h-full opacity-80" />
-            <div
-              className="aurora"
-              style={{
-                top: '-14%',
-                left: '4%',
-                width: 620,
-                height: 620,
-                background: 'radial-gradient(circle, rgba(0,245,255,0.20), transparent 66%)',
-              }}
-            />
-            <div
-              className="aurora"
-              style={{
-                top: '-6%',
-                right: '2%',
-                width: 560,
-                height: 560,
-                background: 'radial-gradient(circle, rgba(139,92,246,0.24), transparent 66%)',
-              }}
-            />
-          </div>
+
 
           <div className="relative grid items-center gap-14 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-16">
             {/* ── Copy column ── */}
             <div>
-              <motion.span
-                initial={motionSafe ? { opacity: 0, y: 10 } : false}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+              <motion.span data-ui-motion
+                {...entrance(motionSafe, 0)}
                 className="eyebrow"
               >
                 {t('home.eyebrow')}
               </motion.span>
 
-              <motion.h1
-                initial={motionSafe ? { opacity: 0, y: 24 } : false}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.65, delay: 0.06 }}
-                className="display-xl gradient-text mt-7"
+              <motion.h1 data-ui-motion
+                {...entrance(motionSafe, 1)}
+                className="display-xl text-heading mt-7"
               >
                 {heroTitle.slice(0, 4)}
-                <span style={{ opacity: 0.62 }}>{heroTitle.slice(4)}</span>
+                <span>{heroTitle.slice(4)}</span>
               </motion.h1>
 
-              <motion.p
-                initial={motionSafe ? { opacity: 0, y: 18 } : false}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.14 }}
+              <motion.p data-ui-motion
+                {...entrance(motionSafe, 2)}
                 className="lede measure mt-7"
               >
                 {t('home.heroLead')}
               </motion.p>
 
-              <motion.div
-                initial={motionSafe ? { opacity: 0, y: 18 } : false}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="mt-10 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center"
+              <motion.div data-ui-motion
+                {...entrance(motionSafe, 3)}
+                className="home-hero-actions flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center"
               >
-                <motion.button
-                  whileHover={motionSafe ? { scale: 1.02, y: -2 } : undefined}
-                  whileTap={motionSafe ? { scale: 0.98 } : undefined}
+                <motion.button data-ui-motion
+                  whileHover={hoverLift(motionSafe)}
+                  whileTap={motionSafe ? { y: 0, transition: { duration: 0.15, ease: 'easeOut' } } : undefined}
                   className="btn-primary btn-xl btn-cta"
                   onClick={() => navigate('/register')}
                 >
                   {t('home.ctaPrimary')}
                   <ArrowRight size={17} aria-hidden="true" style={{ marginLeft: 10 }} />
                 </motion.button>
-                <motion.button
-                  whileHover={motionSafe ? { scale: 1.02, y: -2 } : undefined}
-                  whileTap={motionSafe ? { scale: 0.98 } : undefined}
+                <motion.button data-ui-motion
+                  whileHover={hoverLift(motionSafe)}
+                  whileTap={motionSafe ? { y: 0, transition: { duration: 0.15, ease: 'easeOut' } } : undefined}
                   className="btn-secondary btn-xl"
                   onClick={() => navigate('/login')}
                 >
@@ -126,11 +97,9 @@ export default function Home() {
                 </motion.button>
               </motion.div>
 
-              <motion.div
-                initial={motionSafe ? { opacity: 0 } : false}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.6, delay: 0.32 }}
-                className="mt-12 flex flex-wrap items-center gap-x-6 gap-y-3"
+              <motion.div data-ui-motion
+                {...entrance(motionSafe, 4)}
+                className="home-hero-features flex flex-wrap items-center gap-x-6 gap-y-3"
               >
                 {capabilities.slice(0, 2).map(({ title }) => (
                   <span
@@ -140,7 +109,7 @@ export default function Home() {
                   >
                     <span
                       className="h-1 w-1 rounded-full"
-                      style={{ background: 'var(--neon-cyan)' }}
+                      style={{ background: 'var(--text-secondary)' }}
                       aria-hidden="true"
                     />
                     {title}
@@ -150,10 +119,8 @@ export default function Home() {
             </div>
 
             {/* ── Product panel ── */}
-            <motion.div
-              initial={motionSafe ? { opacity: 0, y: 30, scale: 0.97 } : false}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.75, delay: 0.18 }}
+            <motion.div data-ui-motion
+              {...entrance(motionSafe, 5)}
             >
               <RaceConsole />
             </motion.div>
@@ -161,7 +128,9 @@ export default function Home() {
         </section>
 
         {/* ═══ Capabilities — numbered editorial list ═════════════════════ */}
-        <section className="section">
+        <motion.section data-ui-motion className="section"
+          {...entrance(motionSafe, 0, true)}
+        >
           <div className="grid gap-12 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-20">
             <div>
               <span className="eyebrow">{t('home.capabilitiesLabel')}</span>
@@ -174,12 +143,9 @@ export default function Home() {
             {/* Rows, not cards: a list with generous leading reads as editorial. */}
             <ol className="flex flex-col">
               {capabilities.map(({ icon: Icon, title, body }, i) => (
-                <motion.li
+                <motion.li data-ui-motion
                   key={title}
-                  initial={motionSafe ? { opacity: 0, y: 18 } : false}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: '-60px' }}
-                  transition={{ duration: 0.5, delay: i * 0.07 }}
+                  {...entrance(motionSafe, i, true)}
                   className="group flex gap-6 border-t py-8 first:border-t-0 first:pt-0"
                   style={{ borderColor: 'var(--border-glass)' }}
                 >
@@ -194,9 +160,9 @@ export default function Home() {
                     className="grid h-11 w-11 shrink-0 place-items-center"
                     style={{
                       borderRadius: 'var(--radius-md)',
-                      background: 'rgba(0,245,255,0.07)',
+                      background: 'rgba(177,183,192,0.07)',
                       border: '1px solid var(--border-subtle)',
-                      color: 'var(--cyan)',
+                      color: 'var(--text-secondary)',
                     }}
                     aria-hidden="true"
                   >
@@ -213,20 +179,14 @@ export default function Home() {
               ))}
             </ol>
           </div>
-        </section>
+        </motion.section>
 
         {/* ═══ The mechanic — the typing surface as the hero object ═══════ */}
-        <section className="pb-2">
+        <motion.section data-ui-motion className="pb-2"
+          {...entrance(motionSafe, 0, true)}
+        >
           <div className="panel panel-accent panel-pad-lg relative overflow-hidden">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  'radial-gradient(720px 340px at 78% 0%, rgba(139,92,246,0.16), transparent 68%),' +
-                  'radial-gradient(620px 320px at 12% 100%, rgba(0,245,255,0.12), transparent 68%)',
-              }}
-            />
+
 
             <div className="relative grid items-center gap-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-16">
               <div>
@@ -250,7 +210,7 @@ export default function Home() {
                 <div className="mb-4 flex items-center gap-1.5" aria-hidden="true">
                   <span className="h-2 w-2 rounded-full" style={{ background: 'rgba(255,255,255,0.14)' }} />
                   <span className="h-2 w-2 rounded-full" style={{ background: 'rgba(255,255,255,0.14)' }} />
-                  <span className="h-2 w-2 rounded-full" style={{ background: 'rgba(0,245,255,0.35)' }} />
+                  <span className="h-2 w-2 rounded-full" style={{ background: 'rgba(177,183,192,0.35)' }} />
                 </div>
 
                 <p
@@ -267,8 +227,8 @@ export default function Home() {
                     <span
                       key={i}
                       style={{
-                        color: i < specimenDone ? '#10b981' : i === specimenDone ? '#f1f5f9' : '#475569',
-                        borderBottom: i === specimenDone ? '2px solid #00f5ff' : 'none',
+                        color: i < specimenDone ? 'var(--success)' : i === specimenDone ? 'var(--text-primary)' : 'var(--text-muted)',
+                        borderBottom: i === specimenDone ? '2px solid var(--accent)' : 'none',
                       }}
                     >
                       {char === ' ' ? '\u00A0' : char}
@@ -278,10 +238,12 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* ═══ How it works ═══════════════════════════════════════════════ */}
-        <section className="section">
+        <motion.section data-ui-motion className="section"
+          {...entrance(motionSafe, 0, true)}
+        >
           <div className="flex flex-col gap-10">
             <div>
               <span className="eyebrow">{t('home.stepsLabel')}</span>
@@ -290,16 +252,16 @@ export default function Home() {
               </h2>
             </div>
 
-            <div className="grid gap-px sm:grid-cols-3" style={{ background: 'var(--border-glass)' }}>
-              {steps.map((step) => (
-                <div
+            <div className="home-steps-grid grid sm:grid-cols-3">
+              {steps.map((step, i) => (
+                <motion.div {...entrance(motionSafe, i, true)} whileHover={hoverLift(motionSafe)}
                   key={step.n}
-                  className="relative p-8"
-                  style={{ background: 'rgba(10,14,26,0.72)' }}
+                  className="home-step relative"
+                  style={{ background: 'var(--bg-card)' }}
                 >
                   <span
                     className="font-racing block text-[44px] font-extrabold leading-none"
-                    style={{ color: 'rgba(0,245,255,0.16)' }}
+                    style={{ color: 'rgba(177,183,192,0.16)' }}
                     aria-hidden="true"
                   >
                     {step.n}
@@ -308,25 +270,19 @@ export default function Home() {
                     {step.title}
                   </h3>
                   <p className="body-copy mt-3">{step.body}</p>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
-        </section>
+        </motion.section>
 
         {/* ═══ Closing CTA ════════════════════════════════════════════════ */}
-        <section className="pb-24 lg:pb-32">
-          <div className="panel panel-accent panel-pad-lg relative overflow-hidden text-center">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  'radial-gradient(680px 320px at 50% 0%, rgba(0,245,255,0.16), transparent 70%),' +
-                  'radial-gradient(680px 320px at 50% 100%, rgba(139,92,246,0.14), transparent 70%)',
-              }}
-            />
-            <div className="relative mx-auto flex max-w-2xl flex-col items-center">
+        <motion.section data-ui-motion className="pb-24 lg:pb-32"
+          {...entrance(motionSafe, 0, true)}
+        >
+          <div className="home-closing panel panel-accent panel-pad-lg relative overflow-hidden text-center">
+
+            <div className="home-closing-content relative mx-auto flex max-w-2xl flex-col items-center">
               <h2 className="display-m" style={{ color: 'var(--text-primary)' }}>
                 {t('home.ctaTitle')}
               </h2>
@@ -350,7 +306,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
       </main>
     </AppShell>
   )
@@ -379,16 +335,8 @@ function RaceConsole() {
   return (
     <div className="panel panel-pad relative overflow-hidden">
       {/* Focal halo behind the console. */}
-      <span
-        aria-hidden="true"
-        className="halo-ring"
-        style={{ width: 420, height: 420, top: -140, right: -120 }}
-      />
-      <span
-        aria-hidden="true"
-        className="halo-ring"
-        style={{ width: 300, height: 300, top: -80, right: -60, borderColor: 'rgba(139,92,246,0.16)' }}
-      />
+
+
 
       <div className="relative">
         {/* Panel head */}
@@ -437,16 +385,15 @@ function RaceConsole() {
                   <div
                     className="h-1 rounded-full"
                     style={{
-                      background:
-                        i === 1 ? 'linear-gradient(90deg, var(--neon-cyan), var(--neon-purple))' : 'rgba(255,255,255,0.09)',
-                      boxShadow: i === 1 ? '0 0 14px rgba(0,245,255,0.45)' : 'none',
+                      background: i === 1 ? 'var(--accent)' : 'var(--border-strong)',
+                      boxShadow: 'none',
                     }}
                     aria-hidden="true"
                   />
                   <div
                     className="mt-2.5 truncate text-center text-[9.5px] font-bold uppercase"
                     style={{
-                      color: i === 1 ? 'var(--cyan)' : 'var(--text-muted)',
+                      color: i === 1 ? 'var(--accent)' : 'var(--text-muted)',
                       letterSpacing: '0.1em',
                     }}
                   >
@@ -469,7 +416,7 @@ function RaceConsole() {
 }
 
 function ConsoleLane({ name, colorIndex, progress, state, motionSafe, delayed = false }) {
-  const color = colorIndex === 0 ? '#00f5ff' : '#8b5cf6'
+  const color = colorIndex === 0 ? 'var(--accent)' : 'var(--text-secondary)'
 
   return (
     <div>
@@ -480,13 +427,13 @@ function ConsoleLane({ name, colorIndex, progress, state, motionSafe, delayed = 
         {name}
       </span>
 
-      <div className="track-lane" style={{ height: 66 }}>
+      <div className="track-lane" data-active={colorIndex === 0} style={{ height: 66 }}>
         <div className="track-road" />
-        <motion.div
+        <motion.div data-ui-motion
           className="track-fill"
           initial={false}
           animate={{ width: `${progress * 0.86}%` }}
-          transition={motionSafe ? { type: 'spring', stiffness: 60, damping: 20, delay: delayed ? 0.2 : 0 } : { duration: 0 }}
+          transition={{ duration: motionSafe ? 0.3 : 0, delay: motionSafe && delayed ? 0.05 : 0, ease: 'easeOut' }}
           aria-hidden="true"
         />
 
@@ -501,15 +448,15 @@ function ConsoleLane({ name, colorIndex, progress, state, motionSafe, delayed = 
           className="absolute inset-y-0 right-[2%] w-[10px]"
           style={{
             background:
-              'repeating-linear-gradient(45deg, rgba(255,255,255,0.16) 0 3px, transparent 3px 6px)',
+              'var(--border-strong)',
           }}
         />
 
-        <motion.div
+        <motion.div data-ui-motion
           className="absolute top-1/2 -translate-y-1/2"
           style={{ left: `calc(${2 + progress * 0.86}% - 28px)` }}
-          animate={motionSafe ? { y: [0, -1.5, 0] } : undefined}
-          transition={motionSafe ? { duration: 0.3, repeat: Infinity, delay: delayed ? 0.15 : 0 } : undefined}
+          animate={motionSafe ? { opacity: 1 } : undefined}
+          transition={{ duration: motionSafe ? 0.3 : 0, ease: 'easeOut' }}
         >
           <Car colorIndex={colorIndex} state={state} size={56} />
         </motion.div>

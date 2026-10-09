@@ -17,7 +17,7 @@ export function LoadingScreen({ label, minHeight = '100vh' }) {
           width: 34,
           height: 34,
           borderColor: 'var(--border-subtle)',
-          borderTopColor: 'var(--neon-cyan)',
+          borderTopColor: 'var(--accent)',
         }}
         aria-hidden="true"
       />

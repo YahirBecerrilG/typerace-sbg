@@ -1,16 +1,16 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Car } from './Car'
 import { useI18n } from '../i18n'
 
 const PLAYER_COLORS = [
-  { text: '#00f5ff', fill: 'rgba(0,245,255,0.28)', glow: 'rgba(0,245,255,0.45)' },
-  { text: '#8b5cf6', fill: 'rgba(139,92,246,0.28)', glow: 'rgba(139,92,246,0.45)' },
-  { text: '#10b981', fill: 'rgba(16,185,129,0.28)', glow: 'rgba(16,185,129,0.45)' },
-  { text: '#f59e0b', fill: 'rgba(245,158,11,0.28)', glow: 'rgba(245,158,11,0.45)' },
-  { text: '#ec4899', fill: 'rgba(236,72,153,0.28)', glow: 'rgba(236,72,153,0.45)' },
-  { text: '#f97316', fill: 'rgba(249,115,22,0.28)', glow: 'rgba(249,115,22,0.45)' },
-  { text: '#06b6d4', fill: 'rgba(6,182,212,0.28)', glow: 'rgba(6,182,212,0.45)' },
-  { text: '#a855f7', fill: 'rgba(168,85,247,0.28)', glow: 'rgba(168,85,247,0.45)' },
+  { text: 'var(--accent)', fill: 'rgba(177,183,192,0.28)', glow: 'var(--border-strong)' },
+  { text: 'var(--text-secondary)', fill: 'rgba(177,183,192,0.28)', glow: 'var(--border-strong)' },
+  { text: 'var(--text-secondary)', fill: 'rgba(177,183,192,0.28)', glow: 'var(--border-strong)' },
+  { text: 'var(--text-secondary)', fill: 'rgba(177,183,192,0.28)', glow: 'var(--border-strong)' },
+  { text: 'var(--text-secondary)', fill: 'rgba(177,183,192,0.28)', glow: 'var(--border-strong)' },
+  { text: 'var(--text-secondary)', fill: 'rgba(177,183,192,0.28)', glow: 'var(--border-strong)' },
+  { text: 'var(--text-secondary)', fill: 'rgba(177,183,192,0.28)', glow: 'var(--border-strong)' },
+  { text: 'var(--text-secondary)', fill: 'rgba(177,183,192,0.28)', glow: 'var(--border-strong)' },
 ]
 
 /**
@@ -21,6 +21,7 @@ const PLAYER_COLORS = [
  * outside the driving area so it can never overlap the car.
  */
 export function RaceTrack({ player, progress = 0, isCurrentPlayer = false, carState = 'idle', colorIndex = 0 }) {
+  const motionSafe = !useReducedMotion()
   const { t } = useI18n()
   const colors = PLAYER_COLORS[colorIndex % PLAYER_COLORS.length]
   const clampedProgress = Math.min(Math.max(progress, 0), 100)
@@ -36,8 +37,8 @@ export function RaceTrack({ player, progress = 0, isCurrentPlayer = false, carSt
       style={{
         height: '92px',
         marginBottom: '14px',
-        border: `1px solid ${isCurrentPlayer ? 'rgba(0,245,255,0.24)' : 'rgba(255,255,255,0.06)'}`,
-        boxShadow: isCurrentPlayer ? `0 0 34px -14px ${colors.glow}` : 'none',
+        border: `1px solid ${isCurrentPlayer ? 'rgba(177,183,192,0.24)' : 'rgba(255,255,255,0.06)'}`,
+        boxShadow: 'none',
       }}
     >
       {/* Road surface and travelled distance */}
@@ -46,10 +47,8 @@ export function RaceTrack({ player, progress = 0, isCurrentPlayer = false, carSt
         className="track-fill"
         style={{
           width: `${clampedProgress * 0.86}%`,
-          background: isCurrentPlayer
-            ? `linear-gradient(90deg, ${colors.fill}, ${colors.text})`
-            : 'linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.2))',
-          boxShadow: isCurrentPlayer ? `0 0 14px ${colors.glow}` : 'none',
+          background: isCurrentPlayer ? 'var(--accent)' : 'var(--text-muted)',
+          boxShadow: 'none',
         }}
         aria-hidden="true"
       />
@@ -67,7 +66,7 @@ export function RaceTrack({ player, progress = 0, isCurrentPlayer = false, carSt
         className="absolute inset-y-0 right-[2%] flex w-[16px] items-center justify-center"
         style={{
           background:
-            'repeating-linear-gradient(45deg, rgba(255,255,255,0.16) 0px, rgba(255,255,255,0.16) 4px, transparent 4px, transparent 8px)',
+            'var(--border-strong)',
         }}
       >
         <span style={{ fontSize: '13px' }}>🏁</span>
@@ -106,7 +105,7 @@ export function RaceTrack({ player, progress = 0, isCurrentPlayer = false, carSt
         className="absolute top-1/2 -translate-y-1/2"
         style={{ left: `calc(${carLeftPercent}% - 28px)` }}
         animate={{ left: `calc(${carLeftPercent}% - 28px)` }}
-        transition={{ type: 'spring', stiffness: 60, damping: 20 }}
+        transition={{ duration: motionSafe ? 0.18 : 0, ease: 'easeOut' }}
       >
         <Car colorIndex={colorIndex} state={carState} size={56} />
       </motion.div>
